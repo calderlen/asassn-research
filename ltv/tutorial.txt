@@ -11,3 +11,53 @@
     - if you loop throuhg a lot of directories, such as all the cal files in 12-1.5, it will output a file for each subdirectory where each one adds onto the last one -- this is here because if you run into a funky light curve that doesn't have much data or just doesn't work through the script, you won't lose the progress leading up to it
     - most of the middle of the script is several configurations for light curves that had missing or bad data in ceratin seasons - but since it's run through 13e6 light curves, not much more may need added
     -
+
+
+from Chris
+
+So the light curve files are in these directories 13_13.5 means things
+from 13.0 to 13.5 mag
+
+$dir[0] = '/data/poohbah/1/assassin/rowan.90/lcsv2/13_13.5/';
+$dir[1] = '/data/poohbah/1/assassin/rowan.90/lcsv2/13.5_14/';
+$dir[2] = '/data/poohbah/1/assassin/rowan.90/lcsv2/14_14.5/';
+$dir[3] = '/data/poohbah/1/assassin/rowan.90/lcsv2/14.5_15/';
+$dir[4] = '/data/poohbah/1/assassin/rowan.90/lcsv2/12_12.5/';
+$dir[5] = '/data/poohbah/1/assassin/rowan.90/lcsv2/12.5_13/';
+
+in each directory there are a set of index files
+
+index#.csv  (ignore the one without a #)
+
+which correspond to the light curves in lc# (downloaded from hawaii) 
+lc#_cal (calibrated etc) -- so the ones you should analyze are the
+lc#_cal ones
+
+the index files have the columns listed at top, the first # is the
+asas-sn ID used by sky patrol 2 - so the raw light curve is
+
+lc#/id.csv - these also have the columns labeled
+
+lc*_cal/id.dat
+
+           jd, mag, error, good, camera, v/g band?, saturated?, cam/field
+
+good =1  = good  =0 likely bad
+
+camera = a unique # for each camera/field in the light curve -
+
+v/g band 1=V band 0 = g band
+
+saturated - none of these should be
+
+For the slow drifts, probably should just use good=1 data -- for
+dippers, I am a little worried that it might flag some dips as bad
+points, can check by seeing what happens with the known ones
+
+light curves are not generated for stars affected by nearby bright stars
+(or at least the ones flagged that way) -- so there will be no
+lc#_cal/id.dat file even though the id is in the index#.csv file
+
+- value added: can search for gravitational microlensing events as well
+
+- ASAS-SN's magnitude range is 11<g<16

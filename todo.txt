@@ -1,0 +1,31 @@
+todo
+
+- Download data from SkyPatrol v 2.0 for your relevant magnitude ranges 14<g<16?
+- get SSH for home desktop added to the server/copy private key from work desktop to home desktop so that you can work from home on the research
+- pick a server to run code on
+
+- Future improvements identified; these approaches shoudl allow searches with lower thresholds on delta g across a wider range of apparent magnitudes -- BJ's paper
+    - Automate the idenitification of stars so that fewer sources require manual inspection
+    - Filter out  known variables with well-defined types, e.g., EBs
+    - Improve methods to filter typical stellar variability; present dispersion limit can eliminate longer, deeper events ebcause they are large enough to affect the dispersion while also not eliminating high amplitude variable stars that trigger our simple approach to flagging canddidates
+    - in addition to downward dips, look for upward dips about the median of the light curve -- variable stars would show both brightening and dimming features, while desired targets would primarily feature dimming events
+    - better automate the identification of bad data points and remove them before beginning the search
+- differences between SP and BJ's studies
+- focus
+    - SP: slowly varying ASAS-SN stars
+    - BJ: big dippers
+- timescale
+    - SP: used seasonal medians to eliminate shorter time scale variaility, then linear and quadratic fits to the medians were used to identify sources slowly varying in brightness
+    - BJ: only required one point in light curve to exceed the magnitude threshold, along with surviving a bunch of other cuts, to identify a candidate because it was more focused on magnitude changes than timescale
+
+- Dippers
+    - before doing anything else, write code to
+    - automate identification of stars so that fewer sources require manual inspection
+    - filter out known variables with well-defined types
+    - improve methods to filter typical stellar variability
+    - find a way to decrease the present dispresion limit because it can eliminate longer, deeper events because they are large enough to affect the dispersion while also not elimiating high ampltiude varialbe stars that the simple approach to finding candidates of delta g > 0.3 mag
+    - better automate the identification of bad data points that that this can also be automated and decrease the amount of time spent on visual inspection
+- 
+
+- Long-term variability
+            
