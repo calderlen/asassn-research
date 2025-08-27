@@ -1,0 +1,13 @@
+- Create file that has the first line/header as the variables the code will output are "ASAS-SN ID','Pstarrs gmag", "Median", "Median_err','Dispersion','Slope','Quad Slope','coeff1','coeff2','max diff"
+- update the file paths for the i/o and outline which directories you'll be looping through to look for the light curve files
+
+
+- what LTvar.py is
+    - loops through files in a given directory/set of directories
+    - finds where the observing season breaks are beased on the sun's position in RA and dec
+    - separates file into different df's corresponding to each df
+    - finds the median of each observing season
+    - does 1d and 2d fits to assign slopes and max differences to each light curve; also outputs some other things
+    - if you loop throuhg a lot of directories, such as all the cal files in 12-1.5, it will output a file for each subdirectory where each one adds onto the last one -- this is here because if you run into a funky light curve that doesn't have much data or just doesn't work through the script, you won't lose the progress leading up to it
+    - most of the middle of the script is several configurations for light curves that had missing or bad data in ceratin seasons - but since it's run through 13e6 light curves, not much more may need added
+    -
