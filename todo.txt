@@ -3,6 +3,10 @@ todo
 - Download data from SkyPatrol v 2.0 for your relevant magnitude ranges 14<g<16?
 - get SSH for home desktop added to the server/copy private key from work desktop to home desktop so that you can work from home on the research
 - pick a server to run code on
+- obtain "recently calibrated" light curves for 15-15.5 mag? dom's light curves only go to 15 mag
+
+- questions for Chris
+    - what mag are we going down to? or is it a trial and error thing
 
 - Future improvements identified; these approaches shoudl allow searches with lower thresholds on delta g across a wider range of apparent magnitudes -- BJ's paper
     - Automate the idenitification of stars so that fewer sources require manual inspection

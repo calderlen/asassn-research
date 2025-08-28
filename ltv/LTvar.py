@@ -23,10 +23,13 @@ from time import sleep
 warnings.filterwarnings("ignore")
 
 
+# names for the columns in the light curve files
 column_names=["JD","mag",'error', 'good/bad', 'camera#', 'band', 'bsflag?', 'camera name'] #1=good, 0 =bad #1=V, 0=g
-last = 30
-directories = ['8','9','10','11','12','13','14','15','16','17','18','19','20','21','22','23','24','25','26','27','28','29','30']
+directories = list(map(str, range(8, 31))) # goes to 30, remember!!
 
+#LTvar = Table.read('LTvar14.5-15.csv')
+#LTvar = Table.read('LTvar14-14.5.csv')
+#LTvar = Table.read('LTvar13.5-4.csv')
 LTvar = Table.read('LTvar13-13.5.csv')
 
 _Target = np.array(LTvar['ASAS-SN ID']).tolist()
@@ -45,7 +48,15 @@ for x in directories:
     print('Starting ' + x + ' directory')
 
     ID = pd.read_table('/data/poohbah/1/assassin/rowan.90/lcsv2/13_13.5//index' + x + '.csv', sep=r'\,|\t', engine='python')
+    #ID = pd.read_table('/data/poohbah/1/assassin/rowan.90/lcsv2/14_14.5//index' + x + '.csv', sep=r'\,|\t', engine='python')
+    #ID = pd.read_table('/data/poohbah/1/assassin/rowan.90/lcsv2/14_15//index' + x + '.csv', sep=r'\,|\t', engine='python')
+    #ID = pd.read_table('/data/poohbah/1/assassin/rowan.90/lcsv2/15_15.5//index' + x + '.csv', sep=r'\,|\t', engine='python')
+
     directory = '/data/poohbah/1/assassin/rowan.90/lcsv2/13_13.5/lc' + x + '_cal/'
+    #directory = '/data/poohbah/1/assassin/rowan.90/lcsv2/13.5_14/lc' + x + '_cal/'
+    #directory = '/data/poohbah/1/assassin/rowan.90/lcsv2/14.5_15/lc' + x + '_cal/'
+    #directory = '/data/poohbah/1/assassin/rowan.90/lcsv2/15_15.5/lc' + x + '_cal/'
+
 
     files = [f for f in os.listdir(directory) if f.endswith('.dat')]
 
@@ -59,7 +70,7 @@ for x in directories:
             Target = Target[0]
             #print(Target)
                
-    #         ra = np.where(ID['#asas_sn_id'] == Target) lccal1
+            #ra = np.where(ID['#asas_sn_id'] == Target) lccal1
             ra = np.where(ID['asas_sn_id'] == Target) #lccal2
 
             df = pd.read_table(path, sep="\s+", names=column_names)
