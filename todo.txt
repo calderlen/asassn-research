@@ -1,12 +1,28 @@
 todo
 
-- Download data from SkyPatrol v 2.0 for your relevant magnitude ranges 14<g<16?
 - get SSH for home desktop added to the server/copy private key from work desktop to home desktop so that you can work from home on the research
 - pick a server to run code on
-- obtain "recently calibrated" light curves for 15-15.5 mag? dom's light curves only go to 15 mag
+- obtain "recently calibrated" light curves for 15-15.5, 15.5-16 mag. dom's newly calibrated light curves only go down to 15 mag
+- read up the other types of extrinsic and intrinsic variables and assess if you need to consider them in the "big dippers"
+    - RELEVANT (true dippers or strong analogs)
+        - Protostars (Herbig Ae/Be, Orion variables, FU Ori): dusty circumstellar disks cause occultations, classic dipper mechanism.
+        - R Coronae Borealis variables: irregular, very deep, long-lasting dimming events due to newly formed carbon dust clouds obscuring the star.
+    - SOMEWHAT RELEVANT (can contaminate searches, but not dust occultation mechanism)
+        - Long period variables (Mira, semiregular, slow irregular, long secondary periods): show long-term brightness changes, but are recurrent pulsations rather than asymmetric dust dips.
+        - Luminous blue variables, yellow hypergiants: variability due to mass-loss episodes, not disk occultations.
+        - Eclipsing binaries (Algol, Beta Lyrae, W UMa, W Ser, double periodic variables): produce deep dimmings, but these are strictly periodic and symmetric, unlike non-recurrent dippers.
+    - NOT RELEVANT (wrong timescale, mechanism, or morphology)
+        - Classical pulsators (Cepheids, Type II Cepheids, RR Lyrae, Delta Scuti, SX Phoenicis, rapidly oscillating Ap, Beta Cephei, slowly pulsating B-type, hot subdwarf B pulsators, PV Telescopii, RV Tauri, Alpha Cygni, Gamma Doradus, solar-like oscillations, fast yellow pulsating supergiants, pulsating white dwarfs, BLAPs): variability is periodic, often symmetric, not long irregular dips.
+        - Cataclysmic/explosive (supernovae, luminous red nova, novae, dwarf novae, DQ Her, AM Her, Z And, AM CVn): outbursts rather than dimmings, catastrophic events, completely different morphology.
+        - Rotational/modulation variables (ellipsoidal variables, non-spherical stars, spotted stars like BY Dra, FK Com, magnetic field variables like alpha2 CVn, SX Arietis, optically variable pulsars): shallow, quasi-periodic, not deep dust dips.
+        - Planetary transits: shallow (<0.3 mag) and short-duration (hours), not relevant.
+        - Flare stars, RS Canum Venaticorum: rapid, short-term brightening, not dimming events.
+    -Summary: The main astrophysically relevant dipper populations are young stars with circumstellar disks (Herbig Ae/Be, Orion, FU Ori) and R Coronae Borealis stars. Other classes may mimic long-term variability but do not share the physical dust occultation mechanism.
+
+
+
 
 - questions for Chris
-    - what mag are we going down to? or is it a trial and error thing
 
 - Future improvements identified; these approaches shoudl allow searches with lower thresholds on delta g across a wider range of apparent magnitudes -- BJ's paper
     - Automate the idenitification of stars so that fewer sources require manual inspection
@@ -33,3 +49,79 @@ todo
 
 - Long-term variability
             
+
+
+
+
+- Eliminating false positives
+    - LTVs
+    - Dippers
+        - Stars affected by nearby saturated stars, you can better automate this search
+        - Higher amplitude varaible stars
+        - Automate flagging of known varaibles with well-defined types  
+            - EBs
+        - Improve method to filter out stellar variability beyond a simple light curve dispersion limit sigma > 0.15., because this can eliminate longer, deeper events because they are large enough to affect dispersion while not eliminating high amplitude variable stars that trigger the simple to flagging candidates
+            - one improvement would be to look for upward and downward dips about the median of the light curve, since variable stars would show both brightening and dimming features
+            - dipper targets would only show dimming events
+
+        - False positives that were only eliminated by visual inspection that you can instead eliminate automatically
+            - bright nearby star
+                -The points scatter inconsistently, with some segments shifted up or down.
+                - Different camera colors don’t agree.
+                - Looks messy and irregular rather than a coherent astrophysical signal.
+                - Caused by contamination from a nearby bright star (bleed trails/halos).
+            - bad point cluster
+                - Almost perfectly flat baseline, except for a few vertical groups of outliers.
+                - Variability comes from just a handful of bad data points.
+                - A real dipper would show dips spread across many epochs, not a cluster of bad points.
+            - camera offset
+                - Clear step-like jumps in brightness that line up with changes in observing camera (colors).
+                - Each camera measures a slightly different mean level.
+                - Not true variability, but a calibration mismatch between instruments.
+            - R Coronae Borealis variable
+                - Multiple large, irregular fadings of >1 mag.
+                - Characteristic of R CrB stars, which fade when carbon dust clouds obscure the star.
+                - Real astrophysical variability, but belongs to a known variable class, not the dipper search target.
+            - contact binary
+                - When phase-folded, shows smooth, repeating, symmetric dips every half day.
+                - Classic W UMa–type binary signature.
+                - Too regular and periodic to be a one-off dipper event.
+            - semi-regular variable
+                - Large, smooth rises and falls in brightness over long timescales.
+                - Cyclic but irregular — typical of pulsating giants.
+                - Not a sharp, isolated dip but long quasi-periodic changes.
+            - T Tauri type YSO
+                - Noisy, irregular scatter around a sinusoidal baseline.
+                - Light curve is messy but still periodic when folded.
+                - Behavior matches spot modulation or accretion variability of a young star.
+                - Too continuous and chaotic for the clean discrete dips of a “big dipper.”  
+        - False positives, altogether
+            - Instrumental/systematic false positives: 
+                - bright star contamination
+                - bad point clusters
+                - camera offsets
+            - Astrophysical but wrong class: 
+                - R CrB
+                - contact binaries
+                - semi-regular pulsators
+                - YSOs
+            - True dippers would instead show isolated, deep, discrete dips with otherwise flat baselines, seen consistently across cameras.
+        - Key Traits of Real Dippers (Figure 8)
+            - Discrete, Deep Events
+            - The dips are sharp and localized in time.
+            - They drop by >0.3 mag and then return to baseline.
+                - Example: J070519+061219 shows a single large drop, then recovers.
+            - Flat or Stable Baseline Outside Events: Most of the light curves are essentially flat except during the dip events. Contrast with false positives, where the whole light curve may look noisy, offset, or quasi-periodic.
+                - Example: J081816–430955 has a clean baseline before and after two distinct dips.
+            - Consistency Across Cameras
+                - Different colors (ASAS-SN cameras) track the same event.
+                - The dip is seen in all cameras simultaneously, not just one (unlike camera offsets or bad-point clusters).
+        - Event Morphology
+            - Dips can be U-shaped or V-shaped, sometimes asymmetric.
+            - Multiple dips (e.g., J081523–385923) look like repeated discrete obscurations, not smooth sinusoidal variability.
+            - In contrast, binaries (false positives) show perfectly repeating patterns.
+            - Duration is Intermediate
+            - Not a fast contact binary dip (hours).
+            - Not a multi-year monotonic trend (like R CrB or AGB variables).
+            - Instead: dips last days–weeks, then recover.
+            - Example: J183153–284827 fades steeply over ~year and stays low for a time — still discrete compared to a decade-long slow fade.
