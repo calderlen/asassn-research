@@ -1,4 +1,4 @@
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as pl
 from matplotlib.patches import Rectangle 
 from matplotlib.patches import ConnectionPatch
 from matplotlib.gridspec import GridSpec
@@ -185,7 +185,7 @@ def plot_light_curve(df, ra, dec, peak_option=False):
     cust_id = custom_id(ra,dec)
     peak, meanmag, length = find_peak(df)
 
-    fig, ax = plt.subplots(1, 1, figsize=(8, 4))
+    fig, ax = pl.subplots(1, 1, figsize=(8, 4))
 
     cams = df["Camera"]
     camtype = np.unique(cams)
@@ -254,7 +254,7 @@ def plot_zoom(df, ra, dec, zoom_range=[-300,3000], peak_option=False):
     cust_id = custom_id(ra,dec)
     peak, meanmag, length = find_peak(df)
 
-    fig, ax = plt.subplots(1, 1, figsize=(10, 4))
+    fig, ax = pl.subplots(1, 1, figsize=(10, 4))
     ax = plotparams(ax)
 
     cams = df["Camera"]
@@ -304,7 +304,7 @@ def plot_multiband(dfv, dfg, ra, dec, peak_option=False):
     cust_id = custom_id(ra,dec)
     peak, meanmag, length = find_peak(dfg)
 
-    fig, ax = plt.subplots(1, 1, figsize=(8, 4))
+    fig, ax = pl.subplots(1, 1, figsize=(8, 4))
 
     gcams = dfg["Camera"]
     gcamtype = np.unique(gcams)

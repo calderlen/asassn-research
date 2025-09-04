@@ -19,9 +19,6 @@ todo
         - Flare stars, RS Canum Venaticorum: rapid, short-term brightening, not dimming events.
     -Summary: The main astrophysically relevant dipper populations are young stars with circumstellar disks (Herbig Ae/Be, Orion, FU Ori) and R Coronae Borealis stars. Other classes may mimic long-term variability but do not share the physical dust occultation mechanism.
 
-
-
-
 - questions for Chris
 
 - Future improvements identified; these approaches shoudl allow searches with lower thresholds on delta g across a wider range of apparent magnitudes -- BJ's paper
@@ -45,13 +42,8 @@ todo
     - improve methods to filter typical stellar variability
     - find a way to decrease the present dispresion limit because it can eliminate longer, deeper events because they are large enough to affect the dispersion while also not elimiating high ampltiude varialbe stars that the simple approach to finding candidates of delta g > 0.3 mag
     - better automate the identification of bad data points that that this can also be automated and decrease the amount of time spent on visual inspection
-- 
 
 - Long-term variability
-            
-
-
-
 
 - Eliminating false positives
     - LTVs
