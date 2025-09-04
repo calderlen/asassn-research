@@ -29,11 +29,11 @@ from astropy.timeseries import LombScargle as ls
 
 #from astropy.io import ascii
 #from astropy.io import fits
-#from astropy.coordinates import SkyCoord
+from astropy.coordinates import SkyCoord
 #from astropy.time import Time
 #from astropy import constants as const
 #from astropy.timeseries import LombScargle as ls
-#from astropy import units as u
+from astropy import units as u
 #from astropy.timeseries import BoxLeastSquares
 
 #import matplotlib.pyplot as pl
@@ -42,6 +42,7 @@ from dipper_processing import find_peak, custom_id, year_to_jd, jd_to_year, plot
 
 
 def read_lightcurve(asassn_id, path):
+    # code adapted from Brayden JoHantgen's code
 
     # different processing for .dat and .csv files
 
@@ -82,6 +83,7 @@ def read_lightcurve(asassn_id, path):
     return df_v, df_g
 
 def naive_dip_detection(df, prominence=0.17, distance=25, height=0.3, width=2):
+    # code adapted from Brayden JoHantgen's code
 
 	df['Mag'] = [float(i) for i in df['Mag']]
 	df['JD'] = [float(i) for i in df['JD']]
@@ -105,7 +107,7 @@ def naive_dip_detection(df, prominence=0.17, distance=25, height=0.3, width=2):
     return peak, mag_mean, length
 
 
-def filter_BNS(light_curve):
+def filter_BNS(df, ra, dec, delta_arcsec, want=('gaia')):
     # Implement filtering logic for bright nearby star contamination
     '''
     THIS IS ONE OF THE MAIN SOURCES OF FALSE POSITIVES AND SHOULD BE FOCUSED ON. The light curve will have a dip that is not real, but caused by a nearby bright star. This can be identified by looking for correlated dips in nearby stars, or by checking for known bright stars in the vicinity of the target star. One way to do this is to cross-match the target star with a catalog of bright stars and check for proximity. If a bright star is found within a certain radius, the dip can be flagged as a potential false positive.
@@ -121,11 +123,22 @@ def filter_BNS(light_curve):
     - cross-matching conditions
         - identify bright stars within angular radius of 15"-30", considering that the ASAS-SN pixel scale is 8" with PSF wings
         - choose what a "bright" star should be
+    - compute for each neighbor
+        - separation in arcseconds; keep neighbors with separation < 30 "
+        - delta m = m_neighbor - m_target; keep neighbors with delta m <= 3-4 mag
+        - propagate Gaia positions with proper motion correction to the epoch of each observation
     '''
 
+    if 'gaia' in want:
+        from astroquery import Gaia
+        # not done
+        sources.append()
+    c = SkyCoord(ra=ra * u.degree, dec = dec*u.degree)
 
+    for j in sources:
+        source_j = SkyCoord(j['ra']*u.deg, j['dec']*u.deg)
+        j['delta_arcsec'] = c.separation(source_j).arcseconds
 
-    pass
 
 def filter_BPC(light_curve):
     # Implement filtering logic for bad point clusters (outliers)

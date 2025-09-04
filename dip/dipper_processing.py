@@ -23,6 +23,7 @@ colors = ["#6b8bcd", "#b3b540", "#8f62ca", "#5eb550", "#c75d9c", "#4bb092", "#c5
               "#ce5761", "#c68c45", '#b5b246', '#d77fcc', '#7362cf', '#ce443f', '#3fc1bf', '#cda735',
               '#a1b055']
 
+# all of this code is adapted from Brayden JoHantgen's code
 
 def plotparams(ax, labelsize=15):
     '''
