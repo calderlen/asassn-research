@@ -180,30 +180,31 @@ c_asassn = SkyCoord(ra=df_all['ra_deg'].values*u.deg, dec=df_all['dec_deg'].valu
 c_vsx  = SkyCoord(ra=df_vsx_filt["ra"].values*u.deg, dec=df_vsx_filt["dec"].values*u.deg)
 
 # nearest neighbor in VSX for each ASAS-SN target
-idx_vsx_near, sep2d_near, _ = c_asassn.match_to_catalog_sky(c_vsx)
-
 match_radius = 3 * u.arcsec  # 3 arcsec
-ok = sep2d_near < match_radius
+idx_targ, idx_vsx, sep2d, _ = c_asassn.search_around_sky(c_vsx, match_radius)
 
-df_match = pd.DataFrame({
-    "targ_idx": np.arange(len(df_all))[ok],
-    "vsx_idx":  idx_vsx_near[ok],
-    "sep_arcsec": sep2d_near[ok].to(u.arcsec).value,
+# creative df with asassn index and vsx index and their separation
+df_pairs = pd.DataFrame({
+    "targ_idx": idx_targ,
+    "vsx_idx":  idx_vsx,
+    "sep_arcsec": sep2d.to(u.arcsec).value
 })
 
+# choose the closest VSX per target
+df_pairs = df_pairs.sort_values(['targ_idx','sep_arcsec'], ascending=[True,True])
+df_best_per_targ = df_pairs.drop_duplicates(subset=['targ_idx'], keep='first')
+
 # merge metadata
-out = (df_match
-       .merge(df_all.reset_index(drop=True), left_on="targ_idx", right_index=True, how="left")
-       .merge(df_vsx_filt.reset_index(drop=True), left_on="vsx_idx",  right_index=True, how="left",
+out = (df_best_per_targ
+       .merge(df_all_.reset_index(drop=True), left_on="targ_idx", right_index=True, how="left")
+       .merge(df_vsx_.reset_index(drop=True), left_on="vsx_idx",  right_index=True, how="left",
               suffixes=("_targ","_vsx")))
 
+# keep id's, coords, name, class, period, and separation; create a df from them
 keep_cols = [
-    "asas_sn_id", "ra_deg", "dec_deg",      # from ASAS-SN index files
-    "id_vsx", "name", "variability_class",  # from VSX
+    "asas_sn_id", "ra_deg", "dec_deg",            # ASAS-SN
+    "id_vsx", "name", "variability_class",        # VSX
     "mag", "period", "sep_arcsec"
 ]
-
 out = out[[c for c in keep_cols if c in out.columns]]
-
 out.to_csv("asassn_x_vsx_matches.csv", index=False)
-
