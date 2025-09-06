@@ -154,3 +154,54 @@ def read_lightcurve(asassn_id, path):
         df_v = df.loc[df["Filter"] == 'V'].reset_index(drop=True)
 
     return df_v, df_g
+
+def make_id(ra_val,dec_val):
+    """
+    CHANGES: ENCODE GMAG INTO THIS ID!!!
+    """
+
+    c = SkyCoord(ra=ra_val*u.degree, dec=dec_val*u.degree, frame='icrs')
+    ra_num = c.ra.hms
+    dec_num = c.dec.dms
+
+    sign = '+' if c.dec.dms[0] >= 0 else '-'
+    deg = abs(int(c.dec.dms[0]))
+    arcmin = abs(int(c.dec.dms[1]))
+    arcsec = abs(int(round(c.dec.dms[2])))
+
+    cust_id = (
+        'J'
+        + str(int(c.ra.hms[0])).rjust(2, '0')
+        + str(int(c.ra.hms[1])).rjust(2, '0')
+        + str(int(round(c.ra.hms[2]))).rjust(2, '0')
+        + sign
+        + str(deg).rjust(2, '0')
+        + str(arcmin).rjust(2, '0')
+        + str(arcsec).rjust(2, '0')
+    )
+
+    return id
+
+def naive_dip_detection(df, prominence=0.17, distance=25, height=0.3, width=2):
+    # code adapted from Brayden JoHantgen's code
+
+	df['Mag'] = [float(i) for i in df['Mag']]
+	df['JD'] = [float(i) for i in df['JD']]
+
+    mag = df['Mag']
+    jd = df['JD']
+
+    mag_mean = sum(mag)/len(mag)
+    df_mag_avg = [i - mag_mean for i in mag]
+    
+    peaks = scipy.signal.find_peaks(df_mag_avg, prominence=prominence, distance=distance, height=height, width=width) 
+
+    peak = peaks[0]
+	prop = peaks[1]
+	
+    length = len(peak)
+	
+    peak = [int(i) for i in peak]
+	peak = pd.Series(peak)
+
+    return peak, mag_mean, length
