@@ -40,7 +40,7 @@ dirs = [lc_12_12_5, lc_12_5_13, lc_13_13_5, lc_13_5_14, lc_14_14_5, lc_14_5_15]
 
 
 
-# variability class filters
+# vsx variability classes
 EXCLUDE = set([
     # Eclipsing binaries (geometric, periodic dips)
     "E","EA","EB","E-DO","EP","EW","EC","ED","ESD", #eclipsing variables
@@ -128,26 +128,29 @@ KEEP = set([
     "VAR","MISC","*",  # useful to *not* discard a priori
 ])
 
-
-def should_drop_cont_var(var_string):
-    # Handle NaN
+# excluding irrelevant vsx variability classes
+def filter_vsx_classes(var_string):
+    # currently, if a vsx entry has no variability class, it is kept
     if pd.isna(var_string):
         return False
     parts = var_string.split("|")
     return any(p in EXCLUDE for p in parts)
 
-cont_var_mask = df_vsx["variability_class"].progress_apply(should_drop_cont_var)
+cont_var_mask = df_vsx["variability_class"].progress_apply(filter_vsx_classes)
 df_vsx_filt = df_vsx[~cont_var_mask].copy()
 
 
 # need to check for [asassn_id].dat missing from lc[num]_cal create a new index[num]_masked.csv by filtering out all entries IN index[num].csv and NOT IN lc[num]_cal
 
+
+# iterate over all dats in all lc_cal subdirs in all magnitude dirs, collect IDs of light curve
 present_ids = set()
 for folder in tqdm(dirs, desc="Scanning bins"):
     files = glob.glob(f"{folder}/lc*_cal/*.dat")
     for f in tqdm(files, desc=f"Collecting IDs in {os.path.basename(folder)}", leave=False):
-        present_ids.add(p(f).stem)t
+        present_ids.add(p(f).stem)
 
+# check the index CSVs against the IDs one by one, masking those entries in the CSVs that are not in the lc subdirs, i.e., mask each index CSV to keep only rows with "present_ids"
 def mask_index_dir(bin_dir):
     idx_paths = glob.glob(f"{bin_dir}/index[0-9]*.csv")
     for idx_path in tqdm(idx_paths, desc=f"Masking {os.path.basename(bin_dir)}", leave=False):
@@ -158,10 +161,10 @@ def mask_index_dir(bin_dir):
         out = p(idx_path).with_name(p(idx_path).stem + "_masked.csv")
         df_masked.to_csv(out, index=False)
 
-
 for d in tqdm(dirs, desc="Creating masked index files"):
     mask_index_dir(d)
 
+# gather masked CSVs and read them
 masked_files = []
 for d in dirs:
     masked_files.extend(glob.glob(f"{d}/index*_masked.csv"))
