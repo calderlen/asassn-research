@@ -6,6 +6,8 @@ import os
 import glob
 
 from tqdm.auto import tqdm
+from itertools import chain
+
 
 from astropy.coordinates import SkyCoord
 from astropy import units as u
@@ -16,16 +18,23 @@ from pathlib import Path as p
 
 tqdm.pandas(desc="Filtering VSX by class")
 
-vsx_columns = set(["id_vsx", "name", "UNKNOWN_FLAG", "ra", "dec", "variability_class", "mag", "band_mag", "UNKNOWN_FLAG_2", "amplitude?", "amplitude/mag_diff", "band_amplitude/mag_diff_amplitude", "epoch", "period", "spectral_type"])
+vsx_columns = ["id_vsx", "name", "UNKNOWN_FLAG", "ra", "dec", "variability_class", "mag", "band_mag", "UNKNOWN_FLAG_2", "amplitude?", "amplitude/mag_diff", "band_amplitude/mag_diff_amplitude", "epoch", "period", "spectral_type"]
 
-asassn_columns=set(["JD","mag",'error', 'good/bad', 'camera#', 'band', 'camera name']) #1=good, 0 =bad #1=V, 0=g
+asassn_columns=["JD","mag",'error', 'good/bad', 'camera#', 'band', 'camera name'] #1=good, 0 =bad #1=V, 0=g
 
-asassn_index_columns = set(['asas_sn_id','ra_deg','dec_deg','refcat_id','gaia_id',  'hip_id','tyc_id','tmass_id','sdss_id','allwise_id','tic_id','plx','plx_d','pm_ra','pm_ra_d','pm_dec','pm_dec_d','gaia_mag','gaia_mag_d','gaia_b_mag','gaia_b_mag_d','gaia_r_mag','gaia_r_mag_d','gaia_eff_temp','gaia_g_extinc','gaia_var','sfd_g_extinc','rp_00_1','rp_01','rp_10','pstarrs_g_mag','pstarrs_g_mag_d','pstarrs_g_mag_chi','pstarrs_g_mag_contrib','pstarrs_r_mag','pstarrs_r_mag_d','pstarrs_r_mag_chi','pstarrs_r_mag_contrib','pstarrs_i_mag','pstarrs_i_mag_d','pstarrs_i_mag_chi','pstarrs_i_mag_contrib','pstarrs_z_mag','pstarrs_z_mag_d','pstarrs_z_mag_chi','pstarrs_z_mag_contrib','nstat'])
+asassn_index_columns = ['asas_sn_id','ra_deg','dec_deg','refcat_id','gaia_id',  'hip_id','tyc_id','tmass_id','sdss_id','allwise_id','tic_id','plx','plx_d','pm_ra','pm_ra_d','pm_dec','pm_dec_d','gaia_mag','gaia_mag_d','gaia_b_mag','gaia_b_mag_d','gaia_r_mag','gaia_r_mag_d','gaia_eff_temp','gaia_g_extinc','gaia_var','sfd_g_extinc','rp_00_1','rp_01','rp_10','pstarrs_g_mag','pstarrs_g_mag_d','pstarrs_g_mag_chi','pstarrs_g_mag_contrib','pstarrs_r_mag','pstarrs_r_mag_d','pstarrs_r_mag_chi','pstarrs_r_mag_contrib','pstarrs_i_mag','pstarrs_i_mag_d','pstarrs_i_mag_chi','pstarrs_i_mag_contrib','pstarrs_z_mag','pstarrs_z_mag_d','pstarrs_z_mag_chi','pstarrs_z_mag_contrib','nstat']
 
 # loading in files
-vsx_dir = '/home/lenhart.106/Downloads/vsxcat.090525'
+vsx_dir = '/data/poohbah/1/assassin/lenhart/code/calder/vsxcat.090525'
 
-df_vsx = pd.read_csv(vsx_dir, delim_whitespace=True, header=None, names=vsx_columns, dtype=str)
+df_vsx = pd.read_csv(
+    vsx_dir,
+    sep=r"\s{2,}",
+    header=None,
+    names=vsx_columns,
+    engine="python",   # <-- problem
+    dtype=str
+)
 
 asassn_dir = '/data/poohbah/1/assassin/rowan.90/lcsv2'
 
@@ -145,10 +154,14 @@ df_vsx_filt = df_vsx[~cont_var_mask].copy()
 
 # iterate over all dats in all lc_cal subdirs in all magnitude dirs, collect IDs of light curve
 present_ids = set()
+all_files = list(chain.from_iterable(glob.glob(f"{d}/lc*_cal/*.dat") for d in dirs))
+
 for folder in tqdm(dirs, desc="Scanning bins"):
     files = glob.glob(f"{folder}/lc*_cal/*.dat")
-    for f in tqdm(files, desc=f"Collecting IDs in {os.path.basename(folder)}", leave=False):
-        present_ids.add(p(f).stem)
+
+    for f in tqdm(all_files, desc="Collecting IDs", unit="file", unit_scale=True, dynamic_ncols=True):
+        
+        present_ids.add(Path(f).stem)
 
 # check the index CSVs against the IDs one by one, masking those entries in the CSVs that are not in the lc subdirs, i.e., mask each index CSV to keep only rows with "present_ids"
 def mask_index_dir(bin_dir):
