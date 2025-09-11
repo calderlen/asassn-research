@@ -208,16 +208,11 @@ df_pairs = df_pairs.sort_values(['targ_idx','sep_arcsec'], ascending=[True,True]
 df_best_per_targ = df_pairs.drop_duplicates(subset=['targ_idx'], keep='first')
 
 # merge metadata
-out = (df_best_per_targ
-       .merge(df_all_.reset_index(drop=True), left_on="targ_idx", right_index=True, how="left")
-       .merge(df_vsx_.reset_index(drop=True), left_on="vsx_idx",  right_index=True, how="left",
-              suffixes=("_targ","_vsx")))
+out = (
+    df_best_per_targ
+    .merge(df_all.reset_index(drop=True), left_on="targ_idx", right_index=True, how="left")
+    .merge(df_vsx_filt.reset_index(drop=True), left_on="vsx_idx", right_index=True, how="left",
+           suffixes=("_targ","_vsx"))
+)
 
-# keep id's, coords, name, class, period, and separation; create a df from them
-keep_cols = [
-    "asas_sn_id", "ra_deg", "dec_deg",            # ASAS-SN
-    "id_vsx", "name", "variability_class",        # VSX
-    "mag", "period", "sep_arcsec"
-]
-out = out[[c for c in keep_cols if c in out.columns]]
 out.to_csv("asassn_x_vsx_matches.csv", index=False)
