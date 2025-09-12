@@ -114,46 +114,7 @@ for x in range num_12_12_5:
                     #    time = df['JD']
                     #    mag = df['mag']
 
-def read_lightcurve(asassn_id, path):
-    # code adapted from Brayden JoHantgen's code
 
-    # different processing for .dat and .csv files
-
-    if os.path.exists(f"{path}/{asassn_id}.dat"):
-
-        fname = os.path.join(path, f"{asassn_id}.dat")
-
-        df_v = pd.DataFrame()
-        df_g = pd.DataFrame()
-
-        fdata = pd.read_fwf(fname, header=None)
-        fdata.columns = ["JD", "Mag", "Mag_err", "Quality", "Cam_number", "Phot_filter", "Camera"]
-
-        df_v = fdata.loc[fdata["Phot_filter"] == 1].reset_index(drop=True)
-        df_g = fdata.loc[fdata["Phot_filter"] == 0].reset_index(drop=True)      
-
-        df_v['Mag'].astype(float)
-        df_v['JD'].astype(float)
-
-        df_g['Mag'].astype(float)
-        df_g['JD'].astype(float)
-
-    elif os.path.exists(f"{path}/{asassn_id}.csv"):
-
-        fname = os.path.join(path, f"{asassn_id}.csv")
-
-        df = pd.read_csv(fname)
-
-        df['Mag'] = pd.to_numeric(df['Mag'], errors='coerce')
-        df = df.dropna()
-
-        df['Mag'].astype(float)
-        df['JD'] = df.HJD.astype(float)
-
-        df_g = df.loc[df["Filter"] == 'g'].reset_index(drop=True)
-        df_v = df.loc[df["Filter"] == 'V'].reset_index(drop=True)
-
-    return df_v, df_g
 
 def make_id(ra_val,dec_val):
     """

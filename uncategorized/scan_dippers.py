@@ -12,8 +12,4 @@ from astropy import units as u
 
 from dipper_processing import find_peak
 
-# load in csv output by catalog_matching
 
-# create df from csv output
-
-# run find_peak(df)

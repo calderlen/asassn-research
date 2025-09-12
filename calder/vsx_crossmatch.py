@@ -47,8 +47,6 @@ lc_14_5_15 = asassn_dir + '/14.5_15'
 
 dirs = [lc_12_12_5, lc_12_5_13, lc_13_13_5, lc_13_5_14, lc_14_14_5, lc_14_5_15]
 
-
-
 # vsx variability classes
 EXCLUDE = set([
     # Eclipsing binaries (geometric, periodic dips)
