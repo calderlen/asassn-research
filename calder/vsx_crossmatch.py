@@ -33,8 +33,14 @@ df_vsx = pd.read_csv(
     header=None,
     names=vsx_columns,
     engine="python",   # <-- problem
-    dtype=str
+    dtype=str,
+    on_bad_lines="skip",
 )
+
+# coerce coords
+for col in ("ra","dec"):
+    df_vsx[col] = pd.to_numeric(df_vsx[col], errors="coerce")
+df_vsx = df_vsx.dropna(subset=["ra","dec"])
 
 asassn_dir = '/data/poohbah/1/assassin/rowan.90/lcsv2'
 
@@ -152,14 +158,10 @@ df_vsx_filt = df_vsx[~cont_var_mask].copy()
 
 # iterate over all dats in all lc_cal subdirs in all magnitude dirs, collect IDs of light curve
 present_ids = set()
-all_files = list(chain.from_iterable(glob.glob(f"{d}/lc*_cal/*.dat") for d in dirs))
 
-for folder in tqdm(dirs, desc="Scanning bins"):
-    files = glob.glob(f"{folder}/lc*_cal/*.dat")
-
-    for f in tqdm(all_files, desc="Collecting IDs", unit="file", unit_scale=True, dynamic_ncols=True):
-        
-        present_ids.add(Path(f).stem)
+all_files = [f for d in dirs for f in glob.glob(f"{d}/lc*_cal/*.dat")]
+for f in tqdm(all_files, desc="Collecting IDs", unit="file", unit_scale=True, dynamic_ncols=True):
+    present_ids.add(p(f).stem)
 
 # check the index CSVs against the IDs one by one, masking those entries in the CSVs that are not in the lc subdirs, i.e., mask each index CSV to keep only rows with "present_ids"
 def mask_index_dir(bin_dir):
