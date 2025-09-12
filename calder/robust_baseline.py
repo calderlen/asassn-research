@@ -1,3 +1,4 @@
+from utils import read_lightcurve
 
 # need to get the vsx catalog
 # get the asassn id of each surviving lc in the vsx catalog
