@@ -12,7 +12,15 @@ lc_dir = '/data/poohbah/1/assassin/rowan.90/lcsv2'
 lc_dir_masked = "/data/poohbah/1/assassin/lenhart/code/calder/lcsv2_masked"
 vsx_file = '/data/poohbah/1/assassin/lenhart/code/calder/vsxcat.090525'
 
-# n.b., reading in the masked lc's right now since remasking isn't necessary
+# ----- define bins once -----
+MAG_BINS = ['12_12.5','12.5_13','13_13.5','13.5_14','14_14.5','14.5_15']
+
+# LCs live here (for lc*_cal/*.dat)
+lc_bins = [f"{lc_dir}/{b}" for b in MAG_BINS]
+
+# masked index CSVs live here (for index*_masked.csv)
+masked_bins = [f"{lc_dir_masked}/{b}" for b in MAG_BINS]
+
 lc_12_12_5 = lc_dir_masked + '/12_12.5'
 lc_12_5_13 = lc_dir_masked + '/12.5_13'
 lc_13_13_5 = lc_dir_masked + '/13_13.5'
@@ -32,29 +40,25 @@ vsx_columns = ["id_vsx",
                 "dec", 
                 "class", 
                 "mag", 
-                "band_mag", 
-                "amplitude_flag", 
-                "amplitude", 
-                "amplitude/mag_diff", 
-                "band_amplitude/band_mag_diff", 
-                "amp_band",
+                "mag_band", 
+                "amp_flag", 
+                "amp", 
+                "amp_band"               
                 "epoch", 
                 "period", 
                 "spectral_type"]
 
 dtype_map = {
-    "id_vsx":                       "Int64",     # nullable int
+    "id_vsx":                       "float64",     # nullable int
     "name":                         "string",
-    "UNKNOWN_FLAG":                 "Int8",
+    "UNKNOWN_FLAG":                 "float64",
     "ra":                           "float64",
     "dec":                          "float64",
     "class":                        "string",
     "mag":                          "string",     # <- n.b. taking these in as strings
-    "band_mag":                     "string",
-    "amplitude_flag":               "string",     #<- n.b. taking these in as strings
-    "amplitude":                    "string",
-    "amplitude/mag_diff":           "string",
-    "band_amplitude/band_mag_diff": "float64",
+    "mag_band":                     "string",
+    "amp_flag":                     "string",     #<- n.b. taking these in as strings
+    "amp":                          "string",
     "amp_band":                     "string",
     "epoch":                        "float64",
     "period":                       "float64",
@@ -255,7 +259,7 @@ df_vsx_filt = df_vsx[~cont_var_mask].copy()
 # iterate over all dats in all lc_cal subdirs in all magnitude dirs, collect IDs of light curve
 present_ids = set()
 
-all_files = [f for d in dirs for f in glob.glob(f"{d}/lc*_cal/*.dat")]
+all_files = [f for d in lc_bins for f in glob.glob(f"{d}/lc*_cal/*.dat")]
 for f in tqdm(all_files, desc="Collecting IDs", unit="file", unit_scale=True, dynamic_ncols=True):
     present_ids.add(p(f).stem)
 
@@ -265,12 +269,12 @@ for f in tqdm(all_files, desc="Collecting IDs", unit="file", unit_scale=True, dy
 
 # gather masked CSVs and read them
 masked_files = []
-for d in dirs:
+for d in masked_bins:
     masked_files.extend(glob.glob(f"{d}/index*_masked.csv"))
 
 dfs = []
 for fpath in tqdm(masked_files, desc="Reading masked CSVs"):
-    dfs.append(pd.read_csv(fpath))
+    dfs.append(pd.read_csv(fpath, dtype={"asassn_id": "string"}))
 
 # outputting concatenated lightcurve index csv; come back to this because I don't think it's necessary
 df_all = pd.concat(dfs, ignore_index=True)
