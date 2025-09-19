@@ -1,6 +1,7 @@
 import os
 import glob
 from pathlib import Path as p
+import numpy as np
 import pandas as pd
 from tqdm.auto import tqdm
 from astropy.coordinates import SkyCoord
@@ -43,27 +44,11 @@ vsx_columns = ["id_vsx",
                 "mag_band", 
                 "amp_flag", 
                 "amp", 
-                "amp_band"               
+                "amp_band",
                 "epoch", 
                 "period", 
                 "spectral_type"]
 
-dtype_map = {
-    "id_vsx":                       "float64",     # nullable int
-    "name":                         "string",
-    "UNKNOWN_FLAG":                 "float64",
-    "ra":                           "float64",
-    "dec":                          "float64",
-    "class":                        "string",
-    "mag":                          "string",     # <- n.b. taking these in as strings
-    "mag_band":                     "string",
-    "amp_flag":                     "string",     #<- n.b. taking these in as strings
-    "amp":                          "string",
-    "amp_band":                     "string",
-    "epoch":                        "float64",
-    "period":                       "float64",
-    "spectral_type":                "string",
-}
 '''
 - vsx column notes
     - first column is the vsx id, dtype should be int?
@@ -130,12 +115,14 @@ asassn_index_columns = ['asassn_id',
 df_vsx = pd.read_fwf(
     vsx_file,
     names=vsx_columns,
-    dtype=dtype_map,
+    header=None,
+    dtype=str,          
     on_bad_lines="skip",
     colspecs="infer",
-    header=None,
-    infer_nrows=20000,   # pandas guesses column widths given sample of n rows, instead of explicitly giving column width
-    )
+    infer_nrows=20000,
+)
+
+
 
 def parse_censored_mag(s):
     '''
@@ -152,8 +139,21 @@ def parse_censored_mag(s):
     try: return float(t), pd.NA
     except ValueError: return pd.NA, pd.NA
 
+# floats
+for c in ["ra","dec","epoch","period"]:
+    df_vsx[c] = pd.to_numeric(df_vsx[c], errors="coerce")
+
+# nullable ints (only true integers survive; non-integers -> NA)
+def to_nullable_int(s, dtype="Int64"):
+    x = pd.to_numeric(s, errors="coerce")
+    x = x.where(x.isna() | (np.floor(x) == x))
+    return x.astype(dtype)
+
+df_vsx["id_vsx"]       = to_nullable_int(df_vsx["id_vsx"], "Int64")
+df_vsx["UNKNOWN_FLAG"] = to_nullable_int(df_vsx["UNKNOWN_FLAG"], "Int8")
+
 # appending two more columns in the df_vsx that split the mag column into a float and a string "lt"/"gt" (if the latter is necessary)
-df_vsx[["mag2_val","mag2_censor"]] = df_vsx["mag2"].apply(parse_censored_mag).apply(pd.Series)
+df_vsx[["amp","amp_censor"]] = df_vsx["amp"].apply(parse_censored_mag).apply(pd.Series)
 
 # vsx variability classes
 EXCLUDE = set([
@@ -282,9 +282,17 @@ stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 out_csv = p.cwd() / f"asassn_index_masked_concat_{stamp}.csv"
 df_all.to_csv(out_csv, index=False)
 
+# coerce ASAS-SN coords and drop NaNs BEFORE SkyCoord so indices match search results
+df_all["ra_deg"]  = pd.to_numeric(df_all["ra_deg"], errors="coerce")
+df_all["dec_deg"] = pd.to_numeric(df_all["dec_deg"], errors="coerce")
+df_all_clean = df_all.dropna(subset=["ra_deg","dec_deg"]).reset_index(drop=True)
+df_vsx_filt_clean = df_vsx_filt.dropna(subset=["ra","dec"]).reset_index(drop=True)
+
 # extract RA and Dec from asas-sn and vsx
-c_asassn = SkyCoord(ra=df_all['ra_deg'].values*u.deg, dec=df_all['dec_deg'].values*u.deg)
-c_vsx  = SkyCoord(ra=df_vsx_filt["ra"].values*u.deg, dec=df_vsx_filt["dec"].values*u.deg)
+c_asassn = SkyCoord(ra=df_all_clean['ra_deg'].values*u.deg,
+                    dec=df_all_clean['dec_deg'].values*u.deg)
+c_vsx    = SkyCoord(ra=df_vsx_filt_clean["ra"].values*u.deg,
+                    dec=df_vsx_filt_clean["dec"].values*u.deg)
 
 # nearest neighbor in VSX for each ASAS-SN target
 match_radius = 3 * u.arcsec  # 3 arcsec
@@ -297,17 +305,17 @@ df_pairs = pd.DataFrame({
     "sep_arcsec": sep2d.to(u.arcsec).value
 })
 
-# choose the closest VSX per target
-df_pairs = df_pairs.sort_values(['targ_idx','sep_arcsec'], ascending=[True,True])
-df_best_per_targ = df_pairs.drop_duplicates(subset=['targ_idx'], keep='first')
+df_pairs = pd.DataFrame({
+    "targ_idx": idx_targ,
+    "vsx_idx":  idx_vsx,
+    "sep_arcsec": sep2d.to(u.arcsec).value
+}).sort_values(['targ_idx','sep_arcsec']).drop_duplicates('targ_idx', keep='first')
 
 # merge metadata
-out = (
-    df_best_per_targ
-    .merge(df_all.reset_index(drop=True), left_on="targ_idx", right_index=True, how="left")
-    .merge(df_vsx_filt.reset_index(drop=True), left_on="vsx_idx", right_index=True, how="left",
-           suffixes=("_targ","_vsx"))
-)
+out = (df_pairs
+       .merge(df_all_clean, left_on="targ_idx", right_index=True, how="left")
+       .merge(df_vsx_filt_clean, left_on="vsx_idx", right_index=True, how="left",
+              suffixes=("_targ","_vsx")))
 
 # outputting timestamped crossmatched csv
 stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
