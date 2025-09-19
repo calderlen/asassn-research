@@ -5,20 +5,22 @@ import pandas as pd
 from tqdm.auto import tqdm
 from astropy.coordinates import SkyCoord
 from astropy import units as u
+from datetime import datetime
 
 # file paths
-asassn_dir = '/data/poohbah/1/assassin/rowan.90/lcsv2'
-vsx_dir = '/data/poohbah/1/assassin/lenhart/code/calder/vsxcat.090525'
+lc_dir = '/data/poohbah/1/assassin/rowan.90/lcsv2'
+lc_dir_masked = "/data/poohbah/1/assassin/lenhart/code/calder/lcsv2_masked"
+vsx_file = '/data/poohbah/1/assassin/lenhart/code/calder/vsxcat.090525'
 
-lc_12_12_5 = asassn_dir + '/12_12.5'
-lc_12_5_13 = asassn_dir + '/12.5_13'
-lc_13_13_5 = asassn_dir + '/13_13.5'
-lc_13_5_14 = asassn_dir + '/13.5_14'
-lc_14_14_5 = asassn_dir + '/14_14.5'
-lc_14_5_15 = asassn_dir + '/14.5_15'
+# n.b., reading in the masked lc's right now since remasking isn't necessary
+lc_12_12_5 = lc_dir_masked + '/12_12.5'
+lc_12_5_13 = lc_dir_masked + '/12.5_13'
+lc_13_13_5 = lc_dir_masked + '/13_13.5'
+lc_13_5_14 = lc_dir_masked + '/13.5_14'
+lc_14_14_5 = lc_dir_masked + '/14_14.5'
+lc_14_5_15 = lc_dir_masked + '/14.5_15'
 
 dirs = [lc_12_12_5, lc_12_5_13, lc_13_13_5, lc_13_5_14, lc_14_14_5, lc_14_5_15]
-
 
 # each file's column headers
 tqdm.pandas(desc="Filtering VSX by class")
@@ -28,34 +30,35 @@ vsx_columns = ["id_vsx",
                 "UNKNOWN_FLAG", 
                 "ra", 
                 "dec", 
-                "variability_class", 
+                "class", 
                 "mag", 
                 "band_mag", 
                 "amplitude_flag", 
                 "amplitude", 
                 "amplitude/mag_diff", 
                 "band_amplitude/band_mag_diff", 
+                "amp_band",
                 "epoch", 
                 "period", 
                 "spectral_type"]
 
 dtype_map = {
-    "id_vsx":        "Int64",     # nullable int
-    "name":          "string",
-    "flag0":         "Int8",
-    "ra":        "float64",
-    "dec":       "float64",
-    "variability_class": "string",
-    "mag1":          "string",     # <- note taking these in as strings
-    "band1":         "string",
-    "mag2":          "string",     #<- note taking these in as strings
-    "band2":         "string",
-    "amp_flag":      "string",
-    "amp_val":       "float64",
-    "amp_band":      "string",
-    "epoch_jd":      "float64",
-    "period_days":   "float64",
-    "spectral_type": "string",
+    "id_vsx":                       "Int64",     # nullable int
+    "name":                         "string",
+    "UNKNOWN_FLAG":                 "Int8",
+    "ra":                           "float64",
+    "dec":                          "float64",
+    "class":                        "string",
+    "mag":                          "string",     # <- n.b. taking these in as strings
+    "band_mag":                     "string",
+    "amplitude_flag":               "string",     #<- n.b. taking these in as strings
+    "amplitude":                    "string",
+    "amplitude/mag_diff":           "string",
+    "band_amplitude/band_mag_diff": "float64",
+    "amp_band":                     "string",
+    "epoch":                        "float64",
+    "period":                       "float64",
+    "spectral_type":                "string",
 }
 '''
 - vsx column notes
@@ -64,17 +67,70 @@ dtype_map = {
     - third column is some flag: when any survey: 0, except for NSV=1, 
 '''
 
-asassn_columns=["JD","mag",'error', 'good/bad', 'camera#', 'band', 'camera name'] #1=good, 0 =bad #1=V, 0=g
+asassn_columns=["JD",
+                "mag",
+                'error', 
+                'good/bad', 
+                'camera#', 
+                'band', 
+                'camera name'] #1=good, 0 =bad #1=V, 0=g
 
-asassn_index_columns = ['asassn_id','ra_deg','dec_deg','refcat_id','gaia_id',  'hip_id','tyc_id','tmass_id','sdss_id','allwise_id','tic_id','plx','plx_d','pm_ra','pm_ra_d','pm_dec','pm_dec_d','gaia_mag','gaia_mag_d','gaia_b_mag','gaia_b_mag_d','gaia_r_mag','gaia_r_mag_d','gaia_eff_temp','gaia_g_extinc','gaia_var','sfd_g_extinc','rp_00_1','rp_01','rp_10','pstarrs_g_mag','pstarrs_g_mag_d','pstarrs_g_mag_chi','pstarrs_g_mag_contrib','pstarrs_r_mag','pstarrs_r_mag_d','pstarrs_r_mag_chi','pstarrs_r_mag_contrib','pstarrs_i_mag','pstarrs_i_mag_d','pstarrs_i_mag_chi','pstarrs_i_mag_contrib','pstarrs_z_mag','pstarrs_z_mag_d','pstarrs_z_mag_chi','pstarrs_z_mag_contrib','nstat']
+asassn_index_columns = ['asassn_id',
+                        'ra_deg',
+                        'dec_deg',
+                        'refcat_id',
+                        'gaia_id', 
+                        'hip_id',
+                        'tyc_id',
+                        'tmass_id',
+                        'sdss_id',
+                        'allwise_id',
+                        'tic_id',
+                        'plx',
+                        'plx_d',
+                        'pm_ra',
+                        'pm_ra_d',
+                        'pm_dec',
+                        'pm_dec_d',
+                        'gaia_mag',
+                        'gaia_mag_d',
+                        'gaia_b_mag',
+                        'gaia_b_mag_d',
+                        'gaia_r_mag',
+                        'gaia_r_mag_d',
+                        'gaia_eff_temp',
+                        'gaia_g_extinc',
+                        'gaia_var',
+                        'sfd_g_extinc',
+                        'rp_00_1',
+                        'rp_01',
+                        'rp_10',
+                        'pstarrs_g_mag',
+                        'pstarrs_g_mag_d',
+                        'pstarrs_g_mag_chi',
+                        'pstarrs_g_mag_contrib',
+                        'pstarrs_r_mag',
+                        'pstarrs_r_mag_d',
+                        'pstarrs_r_mag_chi',
+                        'pstarrs_r_mag_contrib',
+                        'pstarrs_i_mag',
+                        'pstarrs_i_mag_d',
+                        'pstarrs_i_mag_chi',
+                        'pstarrs_i_mag_contrib',
+                        'pstarrs_z_mag',
+                        'pstarrs_z_mag_d',
+                        'pstarrs_z_mag_chi',
+                        'pstarrs_z_mag_contrib',
+                        'nstat']
 
 df_vsx = pd.read_fwf(
-    vsx_dir,
+    vsx_file,
     names=vsx_columns,
     dtype=dtype_map,
     on_bad_lines="skip",
     colspecs="infer",
-    infer_nrows=10000,   # pandas guesses column widths given sample of n rows, instead of explicitly giving column width
+    header=None,
+    infer_nrows=20000,   # pandas guesses column widths given sample of n rows, instead of explicitly giving column width
     )
 
 def parse_censored_mag(s):
@@ -193,12 +249,8 @@ def filter_vsx_classes(var_string):
     parts = var_string.split("|")
     return any(p in EXCLUDE for p in parts)
 
-cont_var_mask = df_vsx["variability_class"].progress_apply(filter_vsx_classes)
+cont_var_mask = df_vsx["class"].progress_apply(filter_vsx_classes)
 df_vsx_filt = df_vsx[~cont_var_mask].copy()
-
-
-# need to check for [asassn_id].dat missing from lc[num]_cal create a new index[num]_masked.csv by filtering out all entries IN index[num].csv and NOT IN lc[num]_cal
-
 
 # iterate over all dats in all lc_cal subdirs in all magnitude dirs, collect IDs of light curve
 present_ids = set()
@@ -207,21 +259,9 @@ all_files = [f for d in dirs for f in glob.glob(f"{d}/lc*_cal/*.dat")]
 for f in tqdm(all_files, desc="Collecting IDs", unit="file", unit_scale=True, dynamic_ncols=True):
     present_ids.add(p(f).stem)
 
-def mask_index_dir(bin_dir):
-    '''
-    check the index CSVs against the IDs one by one, masking those entries in the CSVs that are not in the lc subdirs, i.e., mask each index CSV to keep only rows with "present_ids"
-    '''
-    idx_paths = glob.glob(f"{bin_dir}/index[0-9]*.csv")
-    for idx_path in tqdm(idx_paths, desc=f"Masking {os.path.basename(bin_dir)}", leave=False):
-        df_idx = pd.read_csv(idx_path)
-        id_col = "asassn_id"
-        m = df_idx[id_col].astype(str).isin(present_ids)
-        df_masked = df_idx[m].copy()
-        out = p(idx_path).with_name(p(idx_path).stem + "_masked.csv")
-        df_masked.to_csv(out, index=False)
-
-for d in tqdm(dirs, desc="Creating masked index files"):
-    mask_index_dir(d)
+# this probably ins't necessary to repeat since we did it once. remove after confirming
+#for d in tqdm(dirs, desc="Creating masked index files"):
+#    mask_index_dir(d)
 
 # gather masked CSVs and read them
 masked_files = []
@@ -232,7 +272,11 @@ dfs = []
 for fpath in tqdm(masked_files, desc="Reading masked CSVs"):
     dfs.append(pd.read_csv(fpath))
 
+# outputting concatenated lightcurve index csv; come back to this because I don't think it's necessary
 df_all = pd.concat(dfs, ignore_index=True)
+stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+out_csv = p.cwd() / f"asassn_index_masked_concat_{stamp}.csv"
+df_all.to_csv(out_csv, index=False)
 
 # extract RA and Dec from asas-sn and vsx
 c_asassn = SkyCoord(ra=df_all['ra_deg'].values*u.deg, dec=df_all['dec_deg'].values*u.deg)
@@ -261,4 +305,7 @@ out = (
            suffixes=("_targ","_vsx"))
 )
 
-out.to_csv("asassn_x_vsx_matches.csv", index=False)
+# outputting timestamped crossmatched csv
+stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+out2 = p.cwd() / f"asassn_x_vsx_matches_{stamp}.csv"
+out.to_csv(out2, index=False)

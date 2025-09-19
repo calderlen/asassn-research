@@ -1,4 +1,4 @@
-from vsx_crossmatch import *
+from vsx_crossmatch import mask_index_dir
 
 dir_12_12_5 = "/data/poohbah/1/assassin/rowan.90/lcsv2/12_12.5"
 dir_12_5_13 = "/data/poohbah/1/assassin/rowan.90/lcsv2/12.5_13"
@@ -8,13 +8,13 @@ dir_14_14_5 = "/data/poohbah/1/assassin/rowan.90/lcsv2/14_14.5"
 dir_14_5_15 = "/data/poohbah/1/assassin/rowan.90/lcsv2/14.5_15"
 dir_15_15_5 = "/data/poohbah/1/assassin/rowan.90/lcsv2/15_15.5"
 
-mask_index_dir(dir_12_12_5)
-mask_index_dir(dir_12_5_13)
-mask_index_dir(dir_13_13_5)
-mask_index_dir(dir_13_5_14)
-mask_index_dir(dir_14_14_5)
-mask_index_dir(dir_14_5_15)
-mask_index_dir(dir_15_15_5)
+#mask_index_dir(dir_12_12_5)
+#mask_index_dir(dir_12_5_13)
+#mask_index_dir(dir_13_13_5)
+#mask_index_dir(dir_13_5_14)
+#mask_index_dir(dir_14_14_5)
+#mask_index_dir(dir_14_5_15)
+#mask_index_dir(dir_15_15_5)
 
 
 # per_camera_zero_point() -- this probably isn't necessary since handled by asassn?

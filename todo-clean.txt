@@ -18,3 +18,7 @@ todo
             - gaia id? or will this miss some
             - RA, DEC + optional ID match?
     - from the updated light curve indices, search light curves at lower magnitudes using the same(?) search criteria as Brayden
+
+
+# LTVs
+    - add additional index csv filter for the LTVs that gets rid of good=0

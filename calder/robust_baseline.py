@@ -12,3 +12,4 @@ df_v, df_g = read_lightcurve(asassn_id, path)
 
 
 def robust_baseline(df_g):
+    pass
