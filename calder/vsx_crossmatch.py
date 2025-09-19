@@ -279,7 +279,7 @@ for fpath in tqdm(masked_files, desc="Reading masked CSVs"):
 
 df_all = pd.concat(dfs, ignore_index=True)
 
-print(f"1. Shape of df_all after concat: {df_all.shape}") # debug
+print(f"Shape of df_all after concat: {df_all.shape}")                       # debug
 
 # coerce ASAS-SN coords and drop NaNs BEFORE SkyCoord so indices match search results
 df_all["ra_deg"]  = pd.to_numeric(df_all["ra_deg"], errors="coerce")
@@ -287,7 +287,7 @@ df_all["dec_deg"] = pd.to_numeric(df_all["dec_deg"], errors="coerce")
 df_all_clean = df_all.dropna(subset=["ra_deg","dec_deg"]).reset_index(drop=True)
 df_vsx_filt_clean = df_vsx_filt.dropna(subset=["ra","dec"]).reset_index(drop=True)
 
-print(f"Shape of df_all_clean after dropna: {df_all_clean.shape}") # debug
+print(f"Shape of df_all_clean after dropna: {df_all_clean.shape}")           # debug
 print(f"Shape of df_vsx_filt_clean after dropna: {df_vsx_filt_clean.shape}") # debug
 
 # outputting concatenated lightcurve index csv; come back to this because I don't think it's necessary
