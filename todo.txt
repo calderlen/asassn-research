@@ -4,20 +4,6 @@ todo
 - pick a server to run code on
 - obtain "recently calibrated" light curves for 15-15.5, 15.5-16 mag. dom's newly calibrated light curves only go down to 15 mag
 - read up the other types of extrinsic and intrinsic variables and assess if you need to consider them in the "big dippers"
-    - RELEVANT (true dippers or strong analogs)
-        - Protostars (Herbig Ae/Be, Orion variables, FU Ori): dusty circumstellar disks cause occultations, classic dipper mechanism.
-        - R Coronae Borealis variables: irregular, very deep, long-lasting dimming events due to newly formed carbon dust clouds obscuring the star.
-    - SOMEWHAT RELEVANT (can contaminate searches, but not dust occultation mechanism)
-        - Long period variables (Mira, semiregular, slow irregular, long secondary periods): show long-term brightness changes, but are recurrent pulsations rather than asymmetric dust dips.
-        - Luminous blue variables, yellow hypergiants: variability due to mass-loss episodes, not disk occultations.
-        - Eclipsing binaries (Algol, Beta Lyrae, W UMa, W Ser, double periodic variables): produce deep dimmings, but these are strictly periodic and symmetric, unlike non-recurrent dippers.
-    - NOT RELEVANT (wrong timescale, mechanism, or morphology)
-        - Classical pulsators (Cepheids, Type II Cepheids, RR Lyrae, Delta Scuti, SX Phoenicis, rapidly oscillating Ap, Beta Cephei, slowly pulsating B-type, hot subdwarf B pulsators, PV Telescopii, RV Tauri, Alpha Cygni, Gamma Doradus, solar-like oscillations, fast yellow pulsating supergiants, pulsating white dwarfs, BLAPs): variability is periodic, often symmetric, not long irregular dips.
-        - Cataclysmic/explosive (supernovae, luminous red nova, novae, dwarf novae, DQ Her, AM Her, Z And, AM CVn): outbursts rather than dimmings, catastrophic events, completely different morphology.
-        - Rotational/modulation variables (ellipsoidal variables, non-spherical stars, spotted stars like BY Dra, FK Com, magnetic field variables like alpha2 CVn, SX Arietis, optically variable pulsars): shallow, quasi-periodic, not deep dust dips.
-        - Planetary transits: shallow (<0.3 mag) and short-duration (hours), not relevant.
-        - Flare stars, RS Canum Venaticorum: rapid, short-term brightening, not dimming events.
-    -Summary: The main astrophysically relevant dipper populations are young stars with circumstellar disks (Herbig Ae/Be, Orion, FU Ori) and R Coronae Borealis stars. Other classes may mimic long-term variability but do not share the physical dust occultation mechanism.
 
 - questions for Chris
 
@@ -27,31 +13,29 @@ todo
     - Improve methods to filter typical stellar variability; present dispersion limit can eliminate longer, deeper events ebcause they are large enough to affect the dispersion while also not eliminating high amplitude variable stars that trigger our simple approach to flagging canddidates
     - in addition to downward dips, look for upward dips about the median of the light curve -- variable stars would show both brightening and dimming features, while desired targets would primarily feature dimming events
     - better automate the identification of bad data points and remove them before beginning the search
-- differences between SP and BJ's studies
-- focus
-    - SP: slowly varying ASAS-SN stars
-    - BJ: big dippers
+
 - timescale
     - SP: used seasonal medians to eliminate shorter time scale variaility, then linear and quadratic fits to the medians were used to identify sources slowly varying in brightness
     - BJ: only required one point in light curve to exceed the magnitude threshold, along with surviving a bunch of other cuts, to identify a candidate because it was more focused on magnitude changes than timescale
 
 - Dippers
     - before doing anything else, write code to
-    - automate identification of stars so that fewer sources require manual inspection
-    - filter out known variables with well-defined types
-    - improve methods to filter typical stellar variability
-    - find a way to decrease the present dispresion limit because it can eliminate longer, deeper events because they are large enough to affect the dispersion while also not elimiating high ampltiude varialbe stars that the simple approach to finding candidates of delta g > 0.3 mag
-    - better automate the identification of bad data points that that this can also be automated and decrease the amount of time spent on visual inspection
+        - automate identification of stars so that fewer sources require manual inspection
+        - filter out known variables with well-defined types
+        - improve methods to filter typical stellar variability
+        - find a way to decrease the present dispresion limit because it can eliminate longer, deeper events because they are large enough to affect the dispersion while also not elimiating high ampltiude varialbe stars that the simple approach to finding candidates of delta g > 0.3 mag
+        - better automate the identification of bad data points that that this can also be automated and decrease the amount of time spent on visual inspection
 
 - Long-term variability
 
 - Eliminating false positives
     - LTVs
     - Dippers
-        - Stars affected by nearby saturated stars, you can better automate this search
-        - Higher amplitude varaible stars
-        - Automate flagging of known varaibles with well-defined types  
-            - EBs
+        - Stars affected by nearby saturated stars, you can better automate this search - done?
+        - Higher amplitude varaible stars - done?
+        - Automate flagging of known varaibles with well-defined types - done?
+
+
         - Improve method to filter out stellar variability beyond a simple light curve dispersion limit sigma > 0.15., because this can eliminate longer, deeper events because they are large enough to affect dispersion while not eliminating high amplitude variable stars that trigger the simple to flagging candidates
             - one improvement would be to look for upward and downward dips about the median of the light curve, since variable stars would show both brightening and dimming features
             - dipper targets would only show dimming events
@@ -108,12 +92,38 @@ todo
             - Consistency Across Cameras
                 - Different colors (ASAS-SN cameras) track the same event.
                 - The dip is seen in all cameras simultaneously, not just one (unlike camera offsets or bad-point clusters).
-        - Event Morphology
-            - Dips can be U-shaped or V-shaped, sometimes asymmetric.
-            - Multiple dips (e.g., J081523–385923) look like repeated discrete obscurations, not smooth sinusoidal variability.
-            - In contrast, binaries (false positives) show perfectly repeating patterns.
-            - Duration is Intermediate
-            - Not a fast contact binary dip (hours).
-            - Not a multi-year monotonic trend (like R CrB or AGB variables).
-            - Instead: dips last days–weeks, then recover.
-            - Example: J183153–284827 fades steeply over ~year and stays low for a time — still discrete compared to a decade-long slow fade.
+            - Event Morphology
+                - Dips can be U-shaped or V-shaped, sometimes asymmetric.
+                - Multiple dips (e.g., J081523–385923) look like repeated discrete obscurations, not smooth sinusoidal variability.
+                - In contrast, binaries (false positives) show perfectly repeating patterns.
+                - Duration is Intermediate
+                - Not a fast contact binary dip (hours).
+                - Not a multi-year monotonic trend (like R CrB or AGB variables).
+                - Instead: dips last days–weeks, then recover.
+                - Example: J183153–284827 fades steeply over ~year and stays low for a time — still discrete compared to a decade-long slow fade.
+
+
+todo
+
+- LCs with bright nearby stars should be removed from the calibrated light curve folders
+
+- Dippers
+    - get coordinates of
+        - continuous variables
+            - which of these to cut out?
+            - which fo these to leave in?
+        - mixed variables that are not dippers
+            - which of these to cut out?
+            - which of these to leave in?
+        - non-continuous variables
+            - which of these to cut out?
+            - which of these to leave in?
+    - match their (proper-motion propagated) coordiantes to light curved index BEFORE they are analyzed, and cut them out from the indices
+        - how should you match?
+            - gaia id? or will this miss some
+            - RA, DEC + optional ID match?
+    - from the updated light curve indices, search light curves at lower magnitudes using the same(?) search criteria as Brayden
+
+
+# LTVs
+    - add additional index csv filter for the LTVs that gets rid of good=0

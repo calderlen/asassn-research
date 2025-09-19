@@ -1,11 +1,8 @@
-import os
 import glob
+import re
 from pathlib import Path as p
-import numpy as np
 import pandas as pd
 from tqdm.auto import tqdm
-from astropy.coordinates import SkyCoord
-from astropy import units as u
 from datetime import datetime
 
 # file paths
@@ -30,30 +27,74 @@ lc_14_5_15 = lc_dir_masked + '/14.5_15'
 
 dirs = [lc_12_12_5, lc_12_5_13, lc_13_13_5, lc_13_5_14, lc_14_14_5, lc_14_5_15]
 
+
+colspecs = [
+    (0, 8),    # 1-8   OID
+    (9, 39),   # 10-39 Name
+    (40, 41),  # 41    V (variability flag)
+    (42, 51),  # 43-51 RAdeg
+    (52, 61),  # 53-61 DEdeg
+    (62, 92),  # 63-92 Type
+    (93, 94),  # 94    l_max
+    (95, 102), # 96-102 max
+    (103,104), # 104   u_max
+    (105,112), # 106-112 n_max
+    (113,114), # 114   f_min
+    (115,116), # 116   l_min
+    (117,124), # 118-124 min
+    (125,126), # 126   u_min
+    (127,135), # 128-135 n_min
+    (136,150), # 137-150 Epoch
+    (151,152), # 152   u_Epoch
+    (153,154), # 154   l_Period
+    (155,174), # 156-174 Period
+    (175,176), # 176   u_Period
+    (177,206), # 178-206 Sp
+]
+
+vsx_columns = ["id_vsx",
+               "name",
+               "var_flag", #0 = Variable, 1 = Suspected variable, 2 = Constant or non-existing, 3 = Possible duplicate
+               "ra",
+               "dec",
+               "class", #GCVS catalog Variability type
+                "l_max", 
+                "mag_max",
+                "u_max",
+                "mag_band_max",
+#     U B V R I   = Johnson broad-band
+#     J H K L M   = Johnson infra-red (1.2, 1.6, 2.2, 3.5, 5um)
+#     Rc Ic       = Cousins' red and infra-red
+#     u v b y     = Stroemgren intermediate-band
+#     u'g'r'i'z'  = Sloan (SDSS)
+#     pg pv bj rf = photographic blue (pg, bj) visual (pv), red (rf)
+#     w C CR CV   = white (clear); R or V used for comparison star.
+#     R1          = ROTSE-I (450-1000nm)
+#     Hp T        = Hipparcos and Tycho (Cat. I/239)
+#     NUV         = near-UV (Galex)
+#     H1A H1B     = STEREO mission filter (essentially 600-800nm)
+                "f_min",
+                "l_min",
+                "mag_min",
+                "u_min",
+                "mag_band_min",
+                "epoch",
+                "u_epoch",
+                "l_period",
+                "period",
+#     The value of the period may be followed by the following symbols:
+#     : = uncertainty flag
+#     ) = value of the mean cycle for U Gem or recurrent nova
+#         (the corresponding opening bracket exists in l_Period)
+#     *N = the real period is likely a multiple of the quoted period
+#     /N = the period quoted is likely a multiple of the real period
+                "u_period",
+                "spectral_type"
+]
+
+
 # each file's column headers
 tqdm.pandas(desc="Filtering VSX by class")
-
-vsx_columns = ["id_vsx", 
-                "name", 
-                "UNKNOWN_FLAG", 
-                "ra", 
-                "dec", 
-                "class", 
-                "mag", 
-                "mag_band", 
-                "amp_flag", 
-                "amp", 
-                "amp_band",
-                "epoch", 
-                "period", 
-                "spectral_type"]
-
-'''
-- vsx column notes
-    - first column is the vsx id, dtype should be int?
-    - second column is the name of the object, which has instances of being separated by a single space
-    - third column is some flag: when any survey: 0, except for NSV=1, 
-'''
 
 asassn_columns=["JD",
                 "mag",
@@ -110,49 +151,20 @@ asassn_index_columns = ['asassn_id',
                         'pstarrs_z_mag_chi',
                         'pstarrs_z_mag_contrib',
                         'nstat']
-
 df_vsx = pd.read_fwf(
     vsx_file,
+    colspecs=colspecs,
     names=vsx_columns,
-    header=None,
-    dtype=str,          
-    on_bad_lines="skip",
-    colspecs="infer",
-    infer_nrows=20000,
+    dtype=str
 )
 
-
-
-def parse_censored_mag(s):
-    '''
-    Since vsx mag columns has upper limits in some cases, we initially process the mag columns as strings. This function takes those entries and splits the mag column into two additional columns: magX_val and magX_censor, with the former containing a float and the latter a string with "lt" or "gt"
-    '''
-    if pd.isna(s): return pd.NA, pd.NA
-    t = str(s).strip()
-    if not t: return pd.NA, pd.NA
-    if t[0] in "<>":
-        sign = "lt" if t[0] == "<" else "gt"
-        try: val = float(t[1:].strip())
-        except ValueError: return pd.NA, sign
-        return val, sign
-    try: return float(t), pd.NA
-    except ValueError: return pd.NA, pd.NA
-
-# floats
-for c in ["ra","dec","epoch","period"]:
+# coercions
+for c in ["ra","dec","mag_max","mag_min","epoch","period"]:
     df_vsx[c] = pd.to_numeric(df_vsx[c], errors="coerce")
 
-# nullable ints (only true integers survive; non-integers -> NA)
-def to_nullable_int(s, dtype="Int64"):
-    x = pd.to_numeric(s, errors="coerce")
-    x = x.where(x.isna() | (np.floor(x) == x))
-    return x.astype(dtype)
+for c in ["id_vsx","var_flag","l_max","u_max","f_min", "l_min","u_min","u_epoch","l_period","u_period"]:
+        df_vsx[c] = pd.to_numeric(df_vsx[c], errors="coerce").astype("Int64")
 
-df_vsx["id_vsx"]       = to_nullable_int(df_vsx["id_vsx"], "Int64")
-df_vsx["UNKNOWN_FLAG"] = to_nullable_int(df_vsx["UNKNOWN_FLAG"], "Int8")
-
-# appending two more columns in the df_vsx that split the mag column into a float and a string "lt"/"gt" (if the latter is necessary)
-df_vsx[["amp","amp_censor"]] = df_vsx["amp"].apply(parse_censored_mag).apply(pd.Series)
 
 # vsx variability classes
 EXCLUDE = set([
@@ -236,30 +248,54 @@ KEEP = set([
     # Explicit
     "DIP",           # VSX “dippers”
     "UXOR",          # UX Ori-type (disk occultations in YSOs)
-    # aperiodic variables
-    "APER",
-    # Catch-alls that often hide dippers
-    "VAR","MISC","*",  # useful to *not* discard a priori
+    "APER",    # aperiodic variables
+    "VAR","MISC","*",  # useful to not discard a priori
 ])
+
+_SPLIT_RE = re.compile(r"[+|,]")  # split on + or | or ,; not "/" because those are baked into the types already
+def tokenize_classes(s):
+    if pd.isna(s): return []
+    raw = _SPLIT_RE.split(s.upper())
+    out = []
+    for r in raw:
+        r = r.strip()
+        if not r: continue
+        out.extend(t for t in r.split() if t)     # also split "NSIN ELL"
+    return out
 
 def filter_vsx_classes(var_string):
     '''
     screens out unwanted vsx variability classes
     '''
-    # currently we are keeping any vsx entry if there is no variability class given; make note of this and adjust if necessary
-    if pd.isna(var_string):
-        return False
-    parts = var_string.split("|")
-    return any(p in EXCLUDE for p in parts)
+    parts = tokenize_classes(var_string)
+    if not parts:
+        return False  # keep rows with no class for now
+    has_exclude = any(p in EXCLUDE for p in parts)
+    return has_exclude
 
 cont_var_mask = df_vsx["class"].progress_apply(filter_vsx_classes)
 df_vsx_filt = df_vsx[~cont_var_mask].copy()
 
+### BEGIN DEBUG OUTPUTS ###
+print("Total rows:", len(df_vsx))
+print("Excluded rows:", cont_var_mask.sum())
+print("Kept rows:", (~cont_var_mask).sum())
+
+print(df_vsx[["id_vsx","name","var_flag","ra","dec","class"]].head(5))
+print("Class NaN rate:", df_vsx["class"].isna().mean())
+
+# See top classes surviving/excluded
+kept   = df_vsx[~cont_var_mask]
+excl   = df_vsx[ cont_var_mask]
+print("Kept count:", len(kept), "Excluded count:", len(excl))
+print("Top kept classes:", kept["class"].value_counts().head(10))
+print("Top excluded classes:", excl["class"].value_counts().head(10))
+
 print(f"Shape of df_vsx_filt after filtering: {df_vsx_filt.shape}") # debug
+### END DEBUG OUTPUTS ###
 
 # iterate over all dats in all lc_cal subdirs in all magnitude dirs, collect IDs of light curve
 present_ids = set()
-
 all_files = [f for d in lc_bins for f in glob.glob(f"{d}/lc*_cal/*.dat")]
 for f in tqdm(all_files, desc="Collecting IDs", unit="file", unit_scale=True, dynamic_ncols=True):
     present_ids.add(p(f).stem)
@@ -290,44 +326,11 @@ df_vsx_filt_clean = df_vsx_filt.dropna(subset=["ra","dec"]).reset_index(drop=Tru
 print(f"Shape of df_all_clean after dropna: {df_all_clean.shape}")           # debug
 print(f"Shape of df_vsx_filt_clean after dropna: {df_vsx_filt_clean.shape}") # debug
 
-# outputting concatenated lightcurve index csv; come back to this because I don't think it's necessary
-stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-out_csv = p.cwd() / f"asassn_index_masked_concat_{stamp}.csv"
-df_all.to_csv(out_csv, index=False)
+# outputting cleaned concatenated asas-sn lightcurve index csv, and cleaned vsx csv
+stamp = datetime.now().strftime("%Y%m%d_%H%M")
 
-out_csv = p.cwd() / f"asassn_index_masked_concat_cleaned_{stamp}.csv"
-df_all.to_csv(out_csv, index=False)
+out_csv = p.cwd() / f"output/asassn_index_masked_concat_cleaned_{stamp}.csv"
+df_all_clean.to_csv(out_csv, index=False)
 
-out_csv = p.cwd() / f"vsx_cleaned_{stamp}.csv"
-df_all.to_csv(out_csv, index=False)
-
-
-# extract RA and Dec from asas-sn and vsx
-c_asassn = SkyCoord(ra=df_all_clean['ra_deg'].values*u.deg,
-                    dec=df_all_clean['dec_deg'].values*u.deg)
-c_vsx    = SkyCoord(ra=df_vsx_filt_clean["ra"].values*u.deg,
-                    dec=df_vsx_filt_clean["dec"].values*u.deg)
-
-print(f"Number of coordinates for search: {len(c_asassn)} (ASAS-SN), {len(c_vsx)} (VSX)") #debug
-
-# nearest neighbor in VSX for each ASAS-SN target
-match_radius = 3 * u.arcsec  # 3 arcsec
-idx_targ, idx_vsx, sep2d, _ = c_asassn.search_around_sky(c_vsx, match_radius)
-
-# create df with asassn index and vsx index and their separation
-df_pairs = pd.DataFrame({
-    "targ_idx": idx_targ,
-    "vsx_idx":  idx_vsx,
-    "sep_arcsec": sep2d.to(u.arcsec).value
-})
-
-# merge metadata
-out = (df_pairs
-       .merge(df_all_clean, left_on="targ_idx", right_index=True, how="left")
-       .merge(df_vsx_filt_clean, left_on="vsx_idx", right_index=True, how="left",
-              suffixes=("_targ","_vsx")))
-
-# outputting timestamped crossmatched csv
-stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-out2 = p.cwd() / f"asassn_x_vsx_matches_{stamp}.csv"
-out.to_csv(out2, index=False)
+out_csv = p.cwd() / f"output/vsx_cleaned_{stamp}.csv"
+df_vsx_filt_clean.to_csv(out_csv, index=False)

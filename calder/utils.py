@@ -299,3 +299,25 @@ def plot_zoom(df, ra, dec, zoom_range=[-300,3000], peak_option=False):
         ax.set_title(cust_id, y=1.03, fontsize=20)
         ax.invert_yaxis()
         ax.minorticks_on()
+
+def peak_search():
+'''
+UNFINISHED
+'''
+	df['Mag'] = [float(i) for i in df['Mag']]
+	df['JD'] = [float(i) for i in df['JD']]
+	mag = df['Mag']
+	jd = df['JD']
+
+	meanmag = sum(mag) / len(mag)
+	df_mag_avg = [i - meanmag for i in mag]
+
+	peaks = scipy.signal.find_peaks(df_mag_avg, prominence=prominence, distance=distance, height=height, width=width) 
+	peak = peaks[0]
+	prop = peaks[1]
+
+	length = len(peak)
+	peak = [int(i) for i in peak]
+	peak = pd.Series(peak)
+
+	return peak, meanmag, length
