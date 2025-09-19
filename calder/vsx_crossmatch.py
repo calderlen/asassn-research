@@ -13,7 +13,6 @@ lc_dir = '/data/poohbah/1/assassin/rowan.90/lcsv2'
 lc_dir_masked = "/data/poohbah/1/assassin/lenhart/code/calder/lcsv2_masked"
 vsx_file = '/data/poohbah/1/assassin/lenhart/code/calder/vsxcat.090525'
 
-# ----- define bins once -----
 MAG_BINS = ['12_12.5','12.5_13','13_13.5','13.5_14','14_14.5','14.5_15']
 
 # LCs live here (for lc*_cal/*.dat)
@@ -256,6 +255,8 @@ def filter_vsx_classes(var_string):
 cont_var_mask = df_vsx["class"].progress_apply(filter_vsx_classes)
 df_vsx_filt = df_vsx[~cont_var_mask].copy()
 
+print(f"Shape of df_vsx_filt after filtering: {df_vsx_filt.shape}") # debug
+
 # iterate over all dats in all lc_cal subdirs in all magnitude dirs, collect IDs of light curve
 present_ids = set()
 
@@ -276,11 +277,9 @@ dfs = []
 for fpath in tqdm(masked_files, desc="Reading masked CSVs"):
     dfs.append(pd.read_csv(fpath, dtype={"asassn_id": "string"}))
 
-# outputting concatenated lightcurve index csv; come back to this because I don't think it's necessary
 df_all = pd.concat(dfs, ignore_index=True)
-stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-out_csv = p.cwd() / f"asassn_index_masked_concat_{stamp}.csv"
-df_all.to_csv(out_csv, index=False)
+
+print(f"1. Shape of df_all after concat: {df_all.shape}") # debug
 
 # coerce ASAS-SN coords and drop NaNs BEFORE SkyCoord so indices match search results
 df_all["ra_deg"]  = pd.to_numeric(df_all["ra_deg"], errors="coerce")
@@ -288,11 +287,28 @@ df_all["dec_deg"] = pd.to_numeric(df_all["dec_deg"], errors="coerce")
 df_all_clean = df_all.dropna(subset=["ra_deg","dec_deg"]).reset_index(drop=True)
 df_vsx_filt_clean = df_vsx_filt.dropna(subset=["ra","dec"]).reset_index(drop=True)
 
+print(f"Shape of df_all_clean after dropna: {df_all_clean.shape}") # debug
+print(f"Shape of df_vsx_filt_clean after dropna: {df_vsx_filt_clean.shape}") # debug
+
+# outputting concatenated lightcurve index csv; come back to this because I don't think it's necessary
+stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+out_csv = p.cwd() / f"asassn_index_masked_concat_{stamp}.csv"
+df_all.to_csv(out_csv, index=False)
+
+out_csv = p.cwd() / f"asassn_index_masked_concat_cleaned_{stamp}.csv"
+df_all.to_csv(out_csv, index=False)
+
+out_csv = p.cwd() / f"vsx_cleaned_{stamp}.csv"
+df_all.to_csv(out_csv, index=False)
+
+
 # extract RA and Dec from asas-sn and vsx
 c_asassn = SkyCoord(ra=df_all_clean['ra_deg'].values*u.deg,
                     dec=df_all_clean['dec_deg'].values*u.deg)
 c_vsx    = SkyCoord(ra=df_vsx_filt_clean["ra"].values*u.deg,
                     dec=df_vsx_filt_clean["dec"].values*u.deg)
+
+print(f"Number of coordinates for search: {len(c_asassn)} (ASAS-SN), {len(c_vsx)} (VSX)") #debug
 
 # nearest neighbor in VSX for each ASAS-SN target
 match_radius = 3 * u.arcsec  # 3 arcsec
