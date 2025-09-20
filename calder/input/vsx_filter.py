@@ -177,11 +177,11 @@ EXCLUDE = set([
 
     # Eruptive / flaring (brightenings, not dusty dimmings)
     "EXOR","FUOR","GCAS","UV","UVN","FF",
-    "I","IA","IB","IS","ISB",
+    "I","IA","IB","IS","ISB", "ZAND", "BE", "WR", "FSCMA",
 
     # Cataclysmic variables (interacting binaries, novae, magnetic systems)
     "AM","CBSS","CBSS/V","DQ","DQ/AE","IBWD",
-    "N","NA","NB","NC","NL","NL/VY","NR",
+    "N","NA","NB","NC","NL","NL/VY","NR", "CV", "ZAMD",
 
     # Supernovae and explosive transients (all spectroscopic subclasses)
     "SN","SN I","SN Ia","SN Iax",
@@ -195,24 +195,26 @@ EXCLUDE = set([
     "V838MON","LFBOT",
 
     # High-energy X-ray/gamma transients
-    "XB","XN","GRB","Transient",
+    "XB","XN","GRB","Transient","HMXB","LMXB",
 
     # Gravitational microlensing events
     "Microlens",
 
     # Non-stellar extragalactic sources
-    "AGN","BLLAC","QSO",
+    "AGN","BLLAC","QSO","GALAXY",
 
     # Cataclysmic dwarf novae (subtypes of UG)
     "UG","UGER","UGSS","UGSU","UGWZ","UGZ","UGZ/IW",
 
     # Rotational variables (spotted stars, ellipsoidal, binaries, pulsars)
-    "ACV","BY","CTTS/ROT","ELL","FKCOM","HB","LERI",
+    "ACV", "ACV:""BY","CTTS/ROT","ELL","FKCOM","HB","LERI",
     "PSR","R","ROT","RS","SXARI","TTS/ROT","WTTS/ROT",
     "NSIN ELL","ROT (TTS subtype)",
+    "r", # Assuming "r"=="R" for now
+    "r'" # Assuming "r'"=="R" for now
 
     # Pulsating variables (radial/non-radial, classical pulsators, WDs, hot stars)
-    "ACEP","ACEP(B)","ACEPS","ACYG","BCEP","BCEPS",
+    "ACEP","ACEP:","ACEP(B)","ACEPS", "ACEPS:","ACYG","BCEP","BCEPS",
     "BLAP","BXCIR","CEP","CW","CWA","CWB","CWB(B)","CWBS",
     "DCEP","DCEP(B)","DCEPS","DCEPS(B)","DSCT","DSCTC",
     "DWLYN","GDOR","HADS","HADS(B)",
@@ -242,36 +244,68 @@ EXCLUDE = set([
     "YSO", "TTS", "CTTS", "WTTS",  
     # Irregular/inauspicious YSO subtypes (often dust-related dips show up here)
     "IN","INA","INB","INS","INSA","INSB","INST","INT","ISA","INAT",
+
+    # Unstudied variable stars with rapid light changes
+    "S",
+
+    # Miscellaneous subtypes
+    "V",    # V Sge subtype of the CBSS variables
+    "EA/SD", # β Persei-type (Algol) eclipsing systems, semi-detached EBs
+    "",
+    "Minor planet",
+
 ])
+
+
 
 KEEP = set([
     # Explicit
-    "DIP",           # VSX “dippers”
-    "UXOR",          # UX Ori-type (disk occultations in YSOs)
-    "APER",    # aperiodic variables
-    "VAR","MISC","*",  # useful to not discard a priori
+    "DIP",              # VSX “dippers”
+    "UXOR",             # UX Ori-type (disk occultations in YSOs)
+    "APER",             # aperiodic variables
+    "CST", #            # "Non-variable stars (constant), formerly suspected to be variable and hastily designated. Further observations have not confirmed their variability."
+    "VAR","MISC","*",   # useful to not discard a priori
 ])
 
 _SPLIT_RE = re.compile(r"[+|,]")  # split on + or | or ,; not "/" because those are baked into the types already
+def _normalize_token(tok: str) -> str:
+    t = tok.strip().upper()
+    if not t:
+        return ""
+    # drop uncertainty and stray punctuation at ends
+    t = t.replace(":", "")
+    # drop any bracketed/parenthetical annotations (e.g., (YY), [E])
+    t = re.sub(r"\([^)]*\)", "", t)
+    t = re.sub(r"\[.*?\]", "", t)
+    t = t.strip(" '\"")
+    # small alias fixes
+    if t == "PUL":  # sometimes appears as PUL in combos
+        t = "PULS"
+    return t
+
 def tokenize_classes(s):
-    if pd.isna(s): return []
-    raw = _SPLIT_RE.split(s.upper())
+    if pd.isna(s):
+        return []
+    raw = [r for r in _SPLIT_RE.split(s) if r]
     out = []
     for r in raw:
-        r = r.strip()
-        if not r: continue
-        out.extend(t for t in r.split() if t)     # also split "NSIN ELL"
+        t = _normalize_token(r)
+        if t:
+            out.append(t)
     return out
 
 def filter_vsx_classes(var_string):
-    '''
+    """
     screens out unwanted vsx variability classes
-    '''
-    parts = tokenize_classes(var_string)
+    Returns True if row should be excluded.
+    KEEP classes override EXCLUDE if both present (e.g., UXOR/ROT => keep).
+    """
+    parts = set(tokenize_classes(var_string))
     if not parts:
         return False  # keep rows with no class for now
-    has_exclude = any(p in EXCLUDE for p in parts)
-    return has_exclude
+    if parts & KEEP:
+        return False
+    return bool(parts & EXCLUDE)
 
 cont_var_mask = df_vsx["class"].progress_apply(filter_vsx_classes)
 df_vsx_filt = df_vsx[~cont_var_mask].copy()
@@ -291,7 +325,7 @@ print("Kept count:", len(kept), "Excluded count:", len(excl))
 print("Top kept classes:", kept["class"].value_counts().head(10))
 print("Top excluded classes:", excl["class"].value_counts().head(10))
 
-print(f"Shape of df_vsx_filt after filtering: {df_vsx_filt.shape}") # debug
+print(f"Shape of df_vsx_filt after filtering: {df_vsx_filt.shape}") # DEBUG
 ### END DEBUG OUTPUTS ###
 
 # iterate over all dats in all lc_cal subdirs in all magnitude dirs, collect IDs of light curve
@@ -315,7 +349,7 @@ for fpath in tqdm(masked_files, desc="Reading masked CSVs"):
 
 df_all = pd.concat(dfs, ignore_index=True)
 
-print(f"Shape of df_all after concat: {df_all.shape}")                       # debug
+print(f"Shape of df_all after concat: {df_all.shape}")                       # DEBUG
 
 # coerce ASAS-SN coords and drop NaNs BEFORE SkyCoord so indices match search results
 df_all["ra_deg"]  = pd.to_numeric(df_all["ra_deg"], errors="coerce")
@@ -323,8 +357,8 @@ df_all["dec_deg"] = pd.to_numeric(df_all["dec_deg"], errors="coerce")
 df_all_clean = df_all.dropna(subset=["ra_deg","dec_deg"]).reset_index(drop=True)
 df_vsx_filt_clean = df_vsx_filt.dropna(subset=["ra","dec"]).reset_index(drop=True)
 
-print(f"Shape of df_all_clean after dropna: {df_all_clean.shape}")           # debug
-print(f"Shape of df_vsx_filt_clean after dropna: {df_vsx_filt_clean.shape}") # debug
+print(f"Shape of df_all_clean after dropna: {df_all_clean.shape}")           # DEBUG
+print(f"Shape of df_vsx_filt_clean after dropna: {df_vsx_filt_clean.shape}") # DEBUG
 
 # outputting cleaned concatenated asas-sn lightcurve index csv, and cleaned vsx csv
 stamp = datetime.now().strftime("%Y%m%d_%H%M")

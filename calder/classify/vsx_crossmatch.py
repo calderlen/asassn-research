@@ -33,12 +33,12 @@ pm_ra_arr   = df_all_clean['pm_ra'].to_numpy(dtype=float)
 pm_dec_arr  = df_all_clean['pm_dec'].to_numpy(dtype=float)
 
 c_asassn = SkyCoord(
-                    ra=ra_deg_arr * u.deg,
-                    dec=dec_deg_arr * u.deg,
-                    pm_ra_cosdec=pm_ra_arr * u.mas/u.yr,
-                    pm_dec=pm_dec_arr * u.mas/u.yr,
-                    obstime=Time(2016.0, format="jyear"),
-).apply_space_motion(new_obstime=Time(2000.0, format="jyear"))
+                    ra=             ra_deg_arr * u.deg,
+                    dec=            dec_deg_arr * u.deg,
+                    pm_ra_cosdec=   pm_ra_arr * u.mas/u.yr,
+                    pm_dec=         pm_dec_arr * u.mas/u.yr,
+                    obstime=        Time(2016.0, format="jyear"),
+                    ).apply_space_motion(new_obstime=Time(2000.0, format="jyear"))
 
 vsx_ra_arr  = df_vsx_filt_clean["ra"].to_numpy(dtype=float)
 vsx_dec_arr = df_vsx_filt_clean["dec"].to_numpy(dtype=float)
