@@ -170,18 +170,29 @@ for c in ["id_vsx","var_flag","l_max","u_max","f_min", "l_min","u_min","u_epoch"
 EXCLUDE = set([
     # Eclipsing binaries (geometric, periodic dips)
     "E","EA","EB","E-DO","EP","EW","EC","ED","ESD", #eclipsing variables
-    "AR","BD","D","DM","DS","DW","EL","GS","HW","K","KE","KW", #subtypes of eclipsing variables
+    "AR","BD","D","DM","DS","DW","EL","GS","HW","K","KE","KW", #subtypes
+    "E/DS","E/DW","E/GS","E/KE","E/KW","E/RS","E/SD",
+    "EA/AR","EA/BD","EA/D","EA/DM","EA/DS","EA/EL","EA/GS","EA/HW",
+    "EA/KE","EA/KW","EA/PN","EA/WD","EA/WR",
+    "EB/AR","EB/D","EB/DM","EB/DW","EB/GS","EB/K","EB/KE","EB/KW",
+    "EB/RS","EB/SD","EB/WR",
+    "ELL/PN","ELL/RS/BY",
+    "EW/D","EW/DM","EW/DW","EW/K","EW/KE","EW/KW","EW/RS",
 
     # White dwarf / compact single stars
     "PN","SD","WD",
 
     # Eruptive / flaring (brightenings, not dusty dimmings)
     "EXOR","FUOR","GCAS","UV","UVN","FF",
-    "I","IA","IB","IS","ISB", "ZAND", "BE", "WR", "FSCMA",
+    "I","IA","IB","IS","ISB", "ZAND", "BE", "WR", "FSCMA","CPNB",
+    "DPV/EA","DPV/EB","DPV/ELL",
+    "EXOR/ROT","SDOR",
 
     # Cataclysmic variables (interacting binaries, novae, magnetic systems)
     "AM","CBSS","CBSS/V","DQ","DQ/AE","IBWD",
     "N","NA","NB","NC","NL","NL/VY","NR", "CV", "ZAMD",
+    "UG","UGER","UGSS","UGSU","UGWZ","UGZ","UGZ/IW",
+    "UG/DQ","UGSS/DQ","UGSU/IBWD","UGZ/DQ","NON-CV",
 
     # Supernovae and explosive transients (all spectroscopic subclasses)
     "SN","SN I","SN Ia","SN Iax",
@@ -196,6 +207,7 @@ EXCLUDE = set([
 
     # High-energy X-ray/gamma transients
     "XB","XN","GRB","Transient","HMXB","LMXB",
+    "HMXB/XP",
 
     # Gravitational microlensing events
     "Microlens",
@@ -203,25 +215,23 @@ EXCLUDE = set([
     # Non-stellar extragalactic sources
     "AGN","BLLAC","QSO","GALAXY",
 
-    # Cataclysmic dwarf novae (subtypes of UG)
-    "UG","UGER","UGSS","UGSU","UGWZ","UGZ","UGZ/IW",
-
     # Rotational variables (spotted stars, ellipsoidal, binaries, pulsars)
-    "ACV", "ACV:","BY","BY:","CTTS/ROT","ELL","FKCOM","HB","LERI",
+    "ACV", "ACV:","BY","BY:","CTTS/ROT","CTTS/DIP","ELL","FKCOM","HB","LERI",
     "PSR","R","ROT","RS","SXARI","TTS/ROT","WTTS/ROT",
     "NSIN ELL","ROT (TTS subtype)",
-    "r", # Assuming "r"=="R" for now
-    "r'", # Assuming "r'"=="R" for now
+    "ROT/DIP","TTS/ROT/DIP","UXOR/ROT",
+    "ROT/WD",
+    "r","r'",
 
     # Pulsating variables (radial/non-radial, classical pulsators, WDs, hot stars)
-    "ACEP","ACEP:","ACEP(B)","ACEPS", "ACEPS:","ACYG","BCEP","BCEPS",
+    "ACEP","ACEP:","ACEP(B)","ACEPS","ACEPS:","ACYG","BCEP","BCEPS",
     "BLAP","BXCIR","CEP","CW","CWA","CWB","CWB(B)","CWBS",
     "DCEP","DCEP(B)","DCEPS","DCEPS(B)","DSCT","DSCTC",
     "DWLYN","GDOR","HADS","HADS(B)",
     "L","LB","LC","M","ORG",
     "PPN","PVTEL","PVTELI","PVTELII","PVTELIII",
     "roAm","roAp",
-    "RR","RRAB","RRAB/BL","RRC","RRD",
+    "RR","RRAB","RRAB/BL","RRC","RRD","RRC/BL",
     "RV","RVA","RVB",
     "SPB","SPBe",
     "SR","SRA","SRB","SRC","SRD","SRS",
@@ -236,39 +246,41 @@ EXCLUDE = set([
 
     # Survey or uncertain classifications (catch-all codes)
     "NSIN","PER","SIN","VBD",
-    
-    # Evolved dust-formers (deep, long dimmings)
-    "RCB", "DYPer",
 
-    # young stars; many show dipping episodes
-    "YSO", "TTS", "CTTS", "WTTS",  
-    # Irregular/inauspicious YSO subtypes (often dust-related dips show up here)
+    # Evolved dust-formers (deep, long dimmings)
+    "RCB","DYPer","VY",
+
+    # Young stars; many show dipping episodes
+    "YSO","TTS","CTTS","WTTS","YSO/DIP",
     "IN","INA","INB","INS","INSA","INSB","INST","INT","ISA","INAT",
 
     # Unstudied variable stars with rapid light changes
     "S",
 
     # Miscellaneous subtypes
-    "V",    # V Sge subtype of the CBSS variables
-    "EA/SD", # β Persei-type (Algol) eclipsing systems, semi-detached EBs
-    "EA/RS",
+    "V",   # V Sge subtype of CBSS
+    "EA/SD","EA/RS",
     "",
     "Minor planet",
-
+    "R/PN",
 ])
-
 
 
 KEEP = set([
     # Explicit
-    "DIP",              # VSX “dippers”
+    "DIP", "DIP:",              # VSX “dippers”
     "UXOR",             # UX Ori-type (disk occultations in YSOs)
     "APER",             # aperiodic variables
     "CST", #            # "Non-variable stars (constant), formerly suspected to be variable and hastily designated. Further observations have not confirmed their variability."
     "VAR","MISC","*",   # useful to not discard a priori
 ])
 
-_SPLIT_RE = re.compile(r"[+|,]")  # split on + or | or ,; not "/" because those are baked into the types already
+# Normalize policy sets to uppercase to match tokenization
+EXCLUDE = set(s.upper() for s in EXCLUDE)
+KEEP = set(s.upper() for s in KEEP)
+
+_SPLIT_RE = re.compile(r"[+|/,]")  # split on + or | or , or /
+
 def _normalize_token(tok: str) -> str:
     t = tok.strip().upper()
     if not t:
@@ -297,9 +309,8 @@ def tokenize_classes(s):
 
 def filter_vsx_classes(var_string):
     """
-    screens out unwanted vsx variability classes
-    Returns True if row should be excluded.
-    KEEP classes override EXCLUDE if both present (e.g., UXOR/ROT => keep).
+    Screens out unwanted VSX variability classes.
+    Discard precedence: if any EXCLUDE token present -> exclude (return True).
     """
     parts = set(tokenize_classes(var_string))
     if not parts:
