@@ -23,6 +23,12 @@ if not pm_ok.all():
     sample = df_all_clean.loc[~pm_ok, ["asas_sn_id","gaia_id","pm_ra","pm_dec"]].head(10)
     raise ValueError(f"{bad} row(s) missing/invalid proper motion.\nSample:\n{sample}")
 
+plx_ok = np.isfinite(df_all_clean["plx"].to_numpy()) & (df_all_clean["plx"].to_numpy() > 0)
+if not plx_ok.all():
+    bad = (~plx_ok).sum()
+    sample = df_all_clean.loc[~plx_ok, ["asas_sn_id","gaia_id","plx"]].head(10)
+    raise ValueError(f"{bad} row(s) missing/invalid parallax.\nSample:\n{sample}")
+
 # epochs
 t_gaia  = Time(2016.0, format="jyear")   # Gaia DR3 ref epoch
 t_j2000 = Time(2000.0, format="jyear")   # VSX (J2000)
