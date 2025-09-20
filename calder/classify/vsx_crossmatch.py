@@ -3,43 +3,42 @@ import numpy as np
 import pandas as pd
 from tqdm.auto import tqdm
 from astropy.time import Time
-from astropy.coordinates import SkyCoord
+from astropy.coordinates import SkyCoord, Distance
 from astropy import units as u
 from datetime import datetime
 
 df_all_clean = pd.read_csv("/data/poohbah/1/assassin/lenhart/code/calder/calder/output/asassn_index_masked_concat_cleaned_20250919_154524.csv", low_memory=False)
 df_vsx_filt_clean = pd.read_csv("/data/poohbah/1/assassin/lenhart/code/calder/calder/output/vsx_cleaned_20250919_154524.csv", low_memory=False)
 
-
 # coerce numerics
-for c in ["ra_deg","dec_deg","pm_ra","pm_dec"]:
+for c in ["ra_deg","dec_deg","pm_ra","pm_dec","plx"]:
     df_all_clean[c] = pd.to_numeric(df_all_clean[c], errors="coerce")
 for c in ["ra","dec"]:
     df_vsx_filt_clean[c] = pd.to_numeric(df_vsx_filt_clean[c], errors="coerce")
 
-pm_ok = df_all_clean["pm_ra"].notna() & df_all_clean["pm_dec"].notna()
-pm_ok &= np.isfinite(df_all_clean["pm_ra"].values) & np.isfinite(df_all_clean["pm_dec"].values)
-
+# debug
+pm_ok = np.isfinite(df_all_clean["pm_ra"].to_numpy()) & np.isfinite(df_all_clean["pm_dec"].to_numpy())
 if not pm_ok.all():
     bad = (~pm_ok).sum()
-    # show a few offending rows to fix upstream
-    sample = df_all_clean.loc[~pm_ok, ["asassn_id","gaia_id","pm_ra","pm_dec"]].head(10)
+    sample = df_all_clean.loc[~pm_ok, ["asas_sn_id","gaia_id","pm_ra","pm_dec"]].head(10)
     raise ValueError(f"{bad} row(s) missing/invalid proper motion.\nSample:\n{sample}")
 
 # epochs
-t_gaia  = Time(2016.0, format="jyear")  # Gaia DR3 ref
-t_j2000 = Time(2000.0, format="jyear")  # VSX ref
+t_gaia  = Time(2016.0, format="jyear")   # Gaia DR3 ref epoch
+t_j2000 = Time(2000.0, format="jyear")   # VSX (J2000)
 
-# extract RA and Dec from asas-sn and vsx
-c_asassn = SkyCoord(ra=df_all_clean['ra_deg'].values*u.deg,
-                    dec=df_all_clean['dec_deg'].values*u.deg,
-                    pm_ra_cosdec=df_all_clean['pm_ra'].values*u.mas/u.yr,
-                    pm_dec=df_all_clean["pm_dec"].values*u.mas/u.yr,
-                    obstime=t_gaia.apply_space_motion(new_obstime=t_j2000)
-                    ).applyspacemotion(newtime=t_j2000)
+c_asassn = SkyCoord(
+                    ra=df_all_clean['ra_deg'] * u.deg,
+                    dec=df_all_clean['dec_deg'] * u.deg,
+                    pm_ra_cosdec=df_all_clean['pm_ra'] * u.mas/u.yr,
+                    pm_dec=df_all_clean['pm_dec'] * u.mas/u.yr,
+                    distance=Distance(parallax=df_all_clean['plx'] * u.mas),
+                    obstime=Time(2016.0, format="jyear"),
+).apply_space_motion(new_obstime=Time(2000.0, format="jyear"))
 
-c_vsx    = SkyCoord(ra=df_vsx_filt_clean["ra"].values*u.deg,
-                    dec=df_vsx_filt_clean["dec"].values*u.deg)
+
+c_vsx = SkyCoord(ra=df_vsx_filt_clean["ra"].values*u.deg,
+                dec=df_vsx_filt_clean["dec"].values*u.deg)
 
 # nearest neighbor in VSX for each ASAS-SN target
 idx_vsx, sep2d, _ = c_asassn.match_to_catalog_sky(c_vsx)
