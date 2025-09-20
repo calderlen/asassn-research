@@ -207,7 +207,7 @@ EXCLUDE = set([
     "UG","UGER","UGSS","UGSU","UGWZ","UGZ","UGZ/IW",
 
     # Rotational variables (spotted stars, ellipsoidal, binaries, pulsars)
-    "ACV", "ACV:","BY","CTTS/ROT","ELL","FKCOM","HB","LERI",
+    "ACV", "ACV:","BY","BY:","CTTS/ROT","ELL","FKCOM","HB","LERI",
     "PSR","R","ROT","RS","SXARI","TTS/ROT","WTTS/ROT",
     "NSIN ELL","ROT (TTS subtype)",
     "r", # Assuming "r"=="R" for now
@@ -221,7 +221,7 @@ EXCLUDE = set([
     "L","LB","LC","M","ORG",
     "PPN","PVTEL","PVTELI","PVTELII","PVTELIII",
     "roAm","roAp",
-    "RR","RRAB","RRC","RRD",
+    "RR","RRAB","RRAB/BL","RRC","RRD",
     "RV","RVA","RVB",
     "SPB","SPBe",
     "SR","SRA","SRB","SRC","SRD","SRS",
@@ -251,6 +251,7 @@ EXCLUDE = set([
     # Miscellaneous subtypes
     "V",    # V Sge subtype of the CBSS variables
     "EA/SD", # β Persei-type (Algol) eclipsing systems, semi-detached EBs
+    "EA/RS",
     "",
     "Minor planet",
 
@@ -321,8 +322,8 @@ print("Class NaN rate:", df_vsx["class"].isna().mean())
 kept   = df_vsx[~cont_var_mask]
 excl   = df_vsx[ cont_var_mask]
 print("Kept count:", len(kept), "Excluded count:", len(excl))
-print("Top kept classes:", kept["class"].value_counts().head(10))
-print("Top excluded classes:", excl["class"].value_counts().head(10))
+print("Top kept classes:", kept["class"].value_counts().head(50))
+print("Top excluded classes:", excl["class"].value_counts().head(5))
 
 print(f"Shape of df_vsx_filt after filtering: {df_vsx_filt.shape}") # DEBUG
 ### END DEBUG OUTPUTS ###
