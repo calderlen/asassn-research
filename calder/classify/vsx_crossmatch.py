@@ -33,18 +33,27 @@ if not plx_ok.all():
 t_gaia  = Time(2016.0, format="jyear")   # Gaia DR3 ref epoch
 t_j2000 = Time(2000.0, format="jyear")   # VSX (J2000)
 
+ra_deg_arr  = df_all_clean['ra_deg'].to_numpy(dtype=float)
+dec_deg_arr = df_all_clean['dec_deg'].to_numpy(dtype=float)
+pm_ra_arr   = df_all_clean['pm_ra'].to_numpy(dtype=float)
+pm_dec_arr  = df_all_clean['pm_dec'].to_numpy(dtype=float)
+plx_arr     = df_all_clean['plx'].to_numpy(dtype=float)
+
 c_asassn = SkyCoord(
-                    ra=df_all_clean['ra_deg'] * u.deg,
-                    dec=df_all_clean['dec_deg'] * u.deg,
-                    pm_ra_cosdec=df_all_clean['pm_ra'] * u.mas/u.yr,
-                    pm_dec=df_all_clean['pm_dec'] * u.mas/u.yr,
-                    distance=Distance(parallax=df_all_clean['plx'] * u.mas),
+                    ra=ra_deg_arr * u.deg,
+                    dec=dec_deg_arr * u.deg,
+                    pm_ra_cosdec=pm_ra_arr * u.mas/u.yr,
+                    pm_dec=pm_dec_arr * u.mas/u.yr,
+                    distance=Distance(parallax=plx_arr * u.mas),
                     obstime=Time(2016.0, format="jyear"),
 ).apply_space_motion(new_obstime=Time(2000.0, format="jyear"))
 
 
-c_vsx = SkyCoord(ra=df_vsx_filt_clean["ra"].values*u.deg,
-                dec=df_vsx_filt_clean["dec"].values*u.deg)
+vsx_ra_arr  = df_vsx_filt_clean["ra"].to_numpy(dtype=float)
+vsx_dec_arr = df_vsx_filt_clean["dec"].to_numpy(dtype=float)
+
+c_vsx = SkyCoord(ra=vsx_ra_arr * u.deg,
+                dec=vsx_dec_arr * u.deg)
 
 # nearest neighbor in VSX for each ASAS-SN target
 idx_vsx, sep2d, _ = c_asassn.match_to_catalog_sky(c_vsx)
