@@ -302,10 +302,9 @@ def filter_vsx_classes(var_string):
     """
     parts = set(tokenize_classes(var_string))
     if not parts:
-        return False  # keep rows with no class for now
-    if parts & KEEP:
         return False
     return bool(parts & EXCLUDE)
+
 
 cont_var_mask = df_vsx["class"].progress_apply(filter_vsx_classes)
 df_vsx_filt = df_vsx[~cont_var_mask].copy()
