@@ -268,7 +268,7 @@ EXCLUDE = set([
 
 KEEP = set([
     # Explicit
-    "DIP", "DIP:",              # VSX “dippers”
+    "DIP", "DIP:",      # VSX “dippers”
     "UXOR",             # UX Ori-type (disk occultations in YSOs)
     "APER",             # aperiodic variables
     "CST", #            # "Non-variable stars (constant), formerly suspected to be variable and hastily designated. Further observations have not confirmed their variability."
