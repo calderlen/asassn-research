@@ -1,6 +1,5 @@
 import numpy as np
-import pandas as pd
-from baseline import per_camera_baseline
+
 
 def find_runs(mask, max_gap=1, min_length=1):
     idx = np.flatnonzero(mask)
@@ -108,11 +107,6 @@ def is_dip_dominated(metrics_dict, min_dip_fraction=0.67):
         return False
  
 
-def multi_camera_overlap(df):
-    
-    
-    
+def multi_camera_confirmation():
     pass
-
-
 

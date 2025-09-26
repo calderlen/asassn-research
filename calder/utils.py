@@ -1,22 +1,14 @@
 import matplotlib.pyplot as pl
-from matplotlib.patches import Rectangle 
-from matplotlib.patches import ConnectionPatch
-from matplotlib.gridspec import GridSpec
 import matplotlib.ticker as tick
 import numpy as np
 import pandas as pd
-import math
 import scipy
 import os
+import re
+from glob import glob
 from tqdm import tqdm
-from astropy.timeseries import BoxLeastSquares
 from astropy import units as u
-from astropy.io import ascii
-from astropy.io import fits
 from astropy.coordinates import SkyCoord
-from astropy.time import Time
-from astropy import constants as const
-from astropy.timeseries import LombScargle as ls
 
 colors = ["#6b8bcd", "#b3b540", "#8f62ca", "#5eb550", "#c75d9c", "#4bb092", "#c5562f", "#6c7f39", 
               "#ce5761", "#c68c45", '#b5b246', '#d77fcc', '#7362cf', '#ce443f', '#3fc1bf', '#cda735',
@@ -77,10 +69,10 @@ def read_lc_dat(asassn_id, path):
         df_g = df.loc[df["v_g_band"] == 0].reset_index(drop=True)    
         df_v = df.loc[df["v_g_band"] == 1].reset_index(drop=True)
 
-        if df_v.empty:
-            print(f"[warn] {asassn_id}: no V band rows")
-        if df_g.empty:
-            print(f"[warn] {asassn_id}: no g band rows")
+        #if df_v.empty:
+        #    print(f"[warn] {asassn_id}: no V band rows")
+        #if df_g.empty:
+        #    print(f"[warn] {asassn_id}: no g band rows")
         
     else:
         print(f"[error] {asassn_id}: file not found in {path}")
@@ -89,28 +81,68 @@ def read_lc_dat(asassn_id, path):
                  
     return df_g, df_v
 
+
+def match_index_to_lc(
+    index_path: str = "/data/poohbah/1/assassin/lenhart/code/calder/lcsv2_masked/",
+    lc_path:    str = "/data/poohbah/1/assassin/rowan.90/lcsv2",
+    mag_bins:   list = ['12_12.5','12.5_13','13_13.5','13.5_14','14.5_15'],
+    id_column:  str = "asas_sn_id",
+):
+    """
+    Generator function that iterates over index*_masked.csv files in lcsv2_masked/<mag_bin>/, find corresponding lc<num>_cal/ directories in lcsv2/<mag_bin>/, and yield one record per asas_sn_id with whether its .dat file exists. Outputs a dict
+    """
+
+    idx_pattern = re.compile(r"index(\d+)_masked\.csv$", re.IGNORECASE)
+
+    for mag_bin in tqdm(mag_bins, desc="Bins", unit="bin"):
+        idx_paths = sorted(glob(os.path.join(index_path, mag_bin, "index*_masked.csv")))
+        for idx_csv in tqdm(idx_paths, desc=f"{mag_bin} index CSVs", leave=False):
+
+            # Assume pattern matches; will raise if not.
+            idx_num = int(idx_pattern.search(os.path.basename(idx_csv)).group(1))
+
+            lc_dir = os.path.join(lc_path, mag_bin, f"lc{idx_num}_cal")
+
+            ids = (
+                pd.read_csv(idx_csv, dtype={id_column: "string"})[id_column]
+                .dropna()
+                .astype(str)
+                .unique()
+            )
+
+            for asn in ids:
+                dat_path = os.path.join(lc_dir, f"{asn}.dat")
+                found = os.path.exists(dat_path)
+                yield {
+                    "mag_bin":      mag_bin,
+                    "index_num":    idx_num,
+                    "index_csv":    idx_csv,
+                    "lc_dir":       lc_dir,
+                    "asas_sn_id":   asn,
+                    "dat_path":     dat_path if found else None,
+                    "found":        found,
+                }
+
+
+
+
 def naive_peak_search(df, prominence=0.17, distance=25, height=0.3, width=2):
-
-    mag = df["mag"]
-    jd = df['JD']
-
-    meanmag = sum(mag) / len(mag)
-    df_mag_avg = [i - meanmag for i in mag]
-
-    peaks = scipy.signal.find_peaks(df_mag_avg,
-                                    prominence=prominence,
-                                    distance=distance, 
-                                    height=height, 
-                                    width=width) 
     
-    peak = peaks[0]
-    prop = peaks[1]
+    mag = np.asarray(df["mag"], float)
+    jd = np.asarray(df["JD"], float)
 
-    length = len(peak)
-    peak = [int(i) for i in peak]
-    peak = pd.Series(peak)
+    meanmag = mag.mean()
+    df_mag_avg = mag - meanmag
 
-    return peak, meanmag, length
+    peak, prop = scipy.signal.find_peaks(
+        df_mag_avg,
+        prominence=prominence,
+        distance=distance,
+        height=height,
+        width=width,
+    )
+
+    return pd.Series(peak, name="peaks"), meanmag, len(peak)
 
 def custom_id(ra_val,dec_val):
     c = SkyCoord(ra=ra_val*u.degree, dec=dec_val*u.degree, frame='icrs')
