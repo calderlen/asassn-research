@@ -17,13 +17,10 @@ if __name__ == "__main__":
     )
     parser.add_argument("--out-dir", default="./peak_results")
     parser.add_argument("--format", choices=("parquet", "csv"), default="parquet")
-    parser.add_argument("--no-timestamp", action="store_true")
-
     args = parser.parse_args()
     bins = args.mag_bins or MAG_BINS
     main(
         bins,
         out_dir=args.out_dir,
         out_format=args.format,
-        timestamp_outputs=not args.no_timestamp,
     )

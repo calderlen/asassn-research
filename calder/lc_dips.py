@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 import os
-from datetime import datetime, timezone
+from datetime import datetime
 
 from lc_utils import read_lc_dat, naive_peak_search, match_index_to_lc
 from lc_metrics import run_metrics_pcb, is_dip_dominated
@@ -116,7 +116,7 @@ def naive_dip_finder(
     out_format="parquet",           # "parquet" to save space or "csv" for convenience; picking parquet for now so as to not stress servers
     **peak_kwargs                   # forwarded to naive_peak_search
 ):
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now().astimezone().strftime("%Y%m%d_%H%M%S%z")
     os.makedirs(out_dir, exist_ok=True)
 
     for b in tqdm(mag_bins, desc="Bins", unit="bin"):
