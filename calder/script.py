@@ -33,23 +33,6 @@ def main():
             out_csv_path=None,  # -> <stem>_selected_dippers.csv in same dir
             write_csv=True,
             index=False,
-            # Also generate PDF plots for selected rows
-            plot=True,
-            plot_band="g",
-            plots_root=ROOT,
-            peak_option=False,
-        )
-        # Also generate V-band plots (no rewrite of CSV)
-        _ = read_df_csv_naive(
-            src,
-            require_both=REQUIRE_BOTH,
-            out_csv_path=None,
-            write_csv=False,
-            index=False,
-            plot=True,
-            plot_band="v",
-            plots_root=ROOT,
-            peak_option=False,
         )
         dest = src.parent / f"{src.stem}_selected_dippers.csv"
         print(f"[ok] {name}: selected {len(df_sel)} rows -> {dest}")
