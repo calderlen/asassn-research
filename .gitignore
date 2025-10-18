@@ -1,0 +1,9 @@
+# Local artifacts / outputs
+.vscode/
+*.pyc
+__pycache__/
+*.kate-swp
+calder/peak_results/
+calder/vsxcat.*
+asassn_index_masked_concat_cleaned_*.csv
+asassn_x_vsx_matches_*.csv
