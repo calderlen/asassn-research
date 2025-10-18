@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from celerite2 import terms, GaussianProcess
+#from celerite2 import terms, GaussianProcess
 from scipy.optimize import minimize
 
 # need to get the vsx catalog
