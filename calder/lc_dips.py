@@ -178,6 +178,12 @@ def naive_dip_finder(
             asn = r["asas_sn_id"]
             dfg, dfv = read_lc_dat(asn, r["lc_dir"])
 
+            # basic cleaning to drop non-finite/invalid points and sort by time
+            if not dfg.empty:
+                dfg = clean_lc(dfg)
+            if not dfv.empty:
+                dfv = clean_lc(dfv)
+
             jd_first = np.nan
             jd_last = np.nan
 

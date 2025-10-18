@@ -10,27 +10,38 @@ import pandas as pd
 #df_v, df_g = read_lightcurve(asassn_id, path)
 
 
-def rolling_time_median(jd, mag, days=300., min_points=10, min_days=30.):
+def rolling_time_median(jd, mag, days=300.0, min_points=10, min_days=30.0):
     """
-    rolling median in time (currently 300d), with at least min_points in the window to compute median
+    Rolling median in time (default 300 d). Requires at least `min_points`
+    finite magnitudes within the window; halves the window down to `min_days`.
     """
-    
+
     jd = np.asarray(jd, float)
     mag = np.asarray(mag, float)
 
     out = np.full_like(mag, np.nan, dtype=float)
     for i, t0 in enumerate(jd):
-        window = days
-        while window >= min_days:
-            mask = (jd >= t0 - window/2) & (jd <= t0 + window/2)
-            if mask.sum() >= min_points:
-                out[i] = np.nanmedian(mag[mask])
+        window = float(days)
+        while window >= float(min_days):
+            mask = (jd >= t0 - window / 2.0) & (jd <= t0 + window / 2.0)
+            vals = mag[mask]
+            good = np.isfinite(vals)
+            if int(good.sum()) >= int(min_points):
+                out[i] = np.nanmedian(vals[good])
                 break
-            window /= 2  # halve the window and try again
+            window /= 2.0  # halve the window and try again
     return out
 
 
-def per_camera_baseline(df, days=300., min_points=10, t_col="JD", mag_col="mag", err_col="error", cam_col="camera#"):
+def per_camera_baseline(
+    df,
+    days=300.0,
+    min_points=10,
+    t_col="JD",
+    mag_col="mag",
+    err_col="error",
+    cam_col="camera#",
+):
     """
     returns a df that mirrors input df but with three extra float columns: (1) baseline, a rolling 300-day median mag computed within each camera group; (2) resid, residual mag-baseline per-camera; (3) sigma_resid, residual divided by (MAD+mag_error) in quadrature, yielding a per-point significance
     """
@@ -52,12 +63,22 @@ def per_camera_baseline(df, days=300., min_points=10, t_col="JD", mag_col="mag",
         resid = m - base
 
         # robust scatter
-        med_resid = np.nanmedian(resid)
-        mad = 1.4826 * np.nanmedian(np.abs(resid - med_resid))
-        e_med = np.nanmedian(e)
+        resid_good = np.isfinite(resid)
+        if resid_good.any():
+            resid_vals = resid[resid_good]
+            med_resid = float(np.median(resid_vals))
+            mad = float(1.4826 * np.median(np.abs(resid_vals - med_resid)))
+        else:
+            med_resid = np.nan
+            mad = np.nan
 
-        robust_std = np.sqrt(mad**2 + e_med**2)
-        robust_std = max(float(robust_std), 1e-6)  # avoid 0/NaN
+        e_good = np.isfinite(e)
+        e_med = float(np.median(e[e_good])) if e_good.any() else np.nan
+
+        mad_num = mad if np.isfinite(mad) else 0.0
+        e_med_num = e_med if np.isfinite(e_med) else 0.0
+        robust_std = float(np.sqrt(mad_num**2 + e_med_num**2))
+        robust_std = max(robust_std, 1e-6)  # avoid 0/NaN
 
         sigma_resid = resid / robust_std
 
