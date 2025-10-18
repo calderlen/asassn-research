@@ -130,7 +130,7 @@ def run_metrics_pcb(df, **pcb_kwargs):
 
     if n_dip_points > 0:
         most_recent_dip = float(df_pcb.loc[dip_mask, "JD"].max())
-        max_depth = float(np.nanmax(df_pcb.loc[dip_mask, "baseline"] - df_pcb.loc[dip_mask, "mag"]))
+        max_depth = float(np.nanmax(df_pcb.loc[dip_mask, "mag"] - df_pcb.loc[dip_mask, "baseline"]))
         if n_dip_runs > 0:
             max_dip_duration = 0.0
             for start, end in dip_runs:
@@ -138,7 +138,7 @@ def run_metrics_pcb(df, **pcb_kwargs):
 
     if n_jump_points > 0:
         most_recent_jump = float(df_pcb.loc[jump_mask, "JD"].max())
-        max_height = float(np.nanmax(df_pcb.loc[jump_mask, "mag"] - df_pcb.loc[jump_mask, "baseline"]))
+        max_height = float(np.nanmax(df_pcb.loc[jump_mask, "baseline"] - df_pcb.loc[jump_mask, "mag"]))
         if n_jump_runs > 0:
             max_jump_duration = 0.0
             for start, end in jump_runs:
