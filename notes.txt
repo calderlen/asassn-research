@@ -1,3 +1,12 @@
+arjuna:     249.89 GiB of RAM and 80 processors
+draupadi:   249.89 GiB of RAM and 80 processors
+nankipoo:   250.02 GiB of RAM and 80 processors
+sahadeva:   249.89 GiB of RAM and 80 processors
+titipu:     250.03 GiB of RAM and 80 processors
+
+
+
+
 Brayden's candidates matching to the raw vsx catalog, so the the other 14 are not in the vsx catalog
 category,name,class
 Single Eclipse Binaries,    J073234-200049,     EA
