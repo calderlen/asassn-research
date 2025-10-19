@@ -100,7 +100,6 @@ def run_one(
         min_points_per_day=0.05,
         min_sigma=3.0,
         match_radius_arcsec=args.match_radius_arcsec,
-        n_helpers=args.n_helpers,
         apply_bns=args.apply_bns,
         apply_vsx_class=args.apply_vsx_class,
         apply_dip_dom=args.apply_dip_dom,
@@ -108,7 +107,7 @@ def run_one(
         apply_periodic=args.apply_periodic,
         apply_sparse=args.apply_sparse,
         apply_sigma=args.apply_sigma,
-        chunk_size=args.chunk_size,
+        seed_workers=args.seed_workers,
         tqdm_position_base=0,
     )
 
@@ -145,7 +144,8 @@ def main() -> int:
     p.add_argument("--min-period", type=float, default=None)
     p.add_argument("--max-period", type=float, default=None)
     p.add_argument("--match-radius-arcsec", type=float, default=3.0)
-    p.add_argument("--n-helpers", type=int, default=10)
+    p.add_argument("--seed-workers", type=int, default=1,
+                   help="Worker processes for the initial candidates_with_peaks_naive stage (default: 1).")
     p.add_argument("--no-bns", dest="apply_bns", action="store_false", default=True,
                    help="Disable the bright-nearby-star (catalog) join.")
     p.add_argument("--no-vsx-class", dest="apply_vsx_class", action="store_false", default=True,
@@ -164,7 +164,6 @@ def main() -> int:
                    help="Destination CSV path when processing a single file.")
     p.add_argument("--output-dir", type=Path, default=None,
                    help="Directory to place output CSVs (per-file and combined).")
-    p.add_argument("--chunk-size", type=int, default=None)
 
     args = p.parse_args()
     ts = datetime.now().astimezone().strftime("%Y%m%d_%H%M%S%z")

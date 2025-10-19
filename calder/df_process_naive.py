@@ -1,8 +1,8 @@
 from __future__ import annotations
 from pathlib import Path
-from concurrent.futures import ProcessPoolExecutor, as_completed, BrokenProcessPool
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from time import perf_counter
-from typing import Dict, Any, Iterable, List, Optional
+from typing import Dict, Any, Optional
 import pandas as pd
 import numpy as np
 from tqdm.auto import tqdm
@@ -14,106 +14,55 @@ from lc_utils import read_lc_dat, read_lc_raw
 
 
 
-# parallelization helpers
-
-def _iter_chunks(df: pd.DataFrame, chunk_size: int) -> Iterable[pd.DataFrame]:
-    """Yield consecutive row chunks of a DataFrame."""
-    n = len(df)
-    if n == 0:
-        return
-    for start in range(0, n, chunk_size):
-        yield df.iloc[start : start + chunk_size]
-
-def _call_filter_by_name(func_name: str, df_chunk: pd.DataFrame, kwargs: Dict[str, Any]) -> pd.DataFrame:
+def _call_filter_by_name(func_name: str, df_in: pd.DataFrame, kwargs: Dict[str, Any]) -> pd.DataFrame:
     """
-    Worker entry point: resolve a top-level function by name and apply to the chunk.
-    (Using a name avoids trying to pickle closures/lambdas.)
+    Resolve a top-level function by name and apply it to the DataFrame.
     """
     fn = globals().get(func_name)
     if fn is None:
         raise RuntimeError(f"Filter function '{func_name}' not found in module globals().")
-    return fn(df_chunk, **kwargs)
+    return fn(df_in, **kwargs)
 
-def _run_step_parallel(
+def _filter_candidates_chunk(df_chunk: pd.DataFrame, band_key: str) -> pd.DataFrame:
+    """Filter a chunk of the peaks DataFrame based on band requirements."""
+    if df_chunk.empty:
+        return df_chunk.iloc[0:0].copy()
+
+    if band_key == "g":
+        mask = df_chunk["g_n_peaks"] > 0
+    elif band_key == "v":
+        mask = df_chunk["v_n_peaks"] > 0
+    elif band_key == "both":
+        mask = (df_chunk["g_n_peaks"] > 0) & (df_chunk["v_n_peaks"] > 0)
+    else:
+        mask = (df_chunk["g_n_peaks"] > 0) | (df_chunk["v_n_peaks"] > 0)
+
+    return df_chunk.loc[mask].copy()
+
+def _run_step_sequential(
     df_in: pd.DataFrame,
     *,
     func_name: str,
     func_kwargs: Dict[str, Any] | None,
-    n_workers: int,
-    chunk_size: int | None,
     step_desc: str,
     position: int = 0,
 ) -> pd.DataFrame:
     """
-    Run a single filtration step in parallel over DataFrame chunks with a tqdm bar.
-    Returns the concatenated DataFrame result.
+    Run a single filtration step sequentially with a compact tqdm indicator.
     """
     func_kwargs = func_kwargs or {}
-    n_rows = len(df_in)
-
-    # Choose a decent default chunk size: ~4 chunks per worker, but not tiny
-    if chunk_size is None:
-        chunk_size = max(1000, int(np.ceil(n_rows / max(1, (n_workers or 1) * 4))))
-
-    if n_rows == 0:
-        tqdm.write(f"[{step_desc}] (skipped — 0 rows)")
-        return df_in
-
     start = perf_counter()
+    n_in = len(df_in)
 
-    # Row-based progress bar — shows rows/s throughput
-    pbar = tqdm(
-        total=n_rows,
-        desc=step_desc,
-        unit="rows",
-        position=position,
-        leave=False,
-        dynamic_ncols=True,
-    )
+    with tqdm(total=1, desc=step_desc, position=position, leave=False, dynamic_ncols=True) as pbar:
+        df_out = _call_filter_by_name(func_name, df_in, func_kwargs)
+        pbar.update(1)
 
-    # Sequential path
-    if not n_workers or n_workers <= 1:
-        out_chunks: List[pd.DataFrame] = []
-        for ch in _iter_chunks(df_in, chunk_size):
-            out_chunks.append(_call_filter_by_name(func_name, ch, func_kwargs))
-            pbar.update(len(ch))
-        pbar.close()
-        elapsed = perf_counter() - start
-        tqdm.write(f"[{step_desc}] {n_rows} rows in {elapsed:.2f}s  ({n_rows/max(elapsed,1e-9):.1f} rows/s)")
-        return pd.concat(out_chunks, ignore_index=True) if out_chunks else df_in.iloc[0:0].copy()
-
-    # Parallel path
-    out_chunks: List[pd.DataFrame] = []
-    try:
-        with ProcessPoolExecutor(max_workers=n_workers, mp_context=None) as ex:
-            futures = {}
-            for ch in _iter_chunks(df_in, chunk_size):
-                # Capture chunk length for progress updates on completion
-                futures[ex.submit(_call_filter_by_name, func_name, ch, func_kwargs)] = len(ch)
-
-            for fut in as_completed(futures):
-                rows_done = futures[fut]
-                res = fut.result()
-                out_chunks.append(res)
-                pbar.update(rows_done)
-    except BrokenProcessPool:
-        pbar.close()
-        tqdm.write(f"[{step_desc}] parallel workers failed; retrying sequentially (consider lowering --n-helpers).")
-        return _run_step_parallel(
-            df_in,
-            func_name=func_name,
-            func_kwargs=func_kwargs,
-            n_workers=0,
-            chunk_size=chunk_size,
-            step_desc=step_desc,
-            position=position,
-        )
-
-    pbar.close()
     elapsed = perf_counter() - start
-    tqdm.write(f"[{step_desc}] {n_rows} rows in {elapsed:.2f}s  ({n_rows/max(elapsed,1e-9):.1f} rows/s)")
-
-    return pd.concat(out_chunks, ignore_index=True) if out_chunks else df_in.iloc[0:0].copy()
+    tqdm.write(
+        f"[{step_desc}] {n_in} → {len(df_out)} rows in {elapsed:.2f}s"
+    )
+    return df_out
 
 
 # filtration functions
@@ -124,50 +73,73 @@ def candidates_with_peaks_naive(
     write_csv: bool = True,
     index: bool = False,
     band: str = "either",
-):
+    *,
+    n_workers: int = 1,
+) -> pd.DataFrame:
     """
     Read peaks_[mag_bin].csv and return only rows where either band has a non-zero number of peaks.
-    Adds a short tqdm to show load+filter time on large CSVs.
+    Parallel chunk filtering is available via n_workers > 1.
     """
-    with tqdm(total=3, desc="candidates_with_peaks_naive", leave=False) as pbar:
-        file = Path(csv_path)
-        if not file.exists():
-            suffix = file.suffix or ".csv"
-            stem = file.stem
-            pattern = f"{stem}_*{suffix}"
-            candidates = sorted(file.parent.glob(pattern))
-            if not candidates:
-                raise FileNotFoundError(f"No file found matching {file} or {pattern}")
-            file = max(candidates, key=lambda p: p.stat().st_mtime)
-        pbar.update(1)
+    file = Path(csv_path)
+    if not file.exists():
+        suffix = file.suffix or ".csv"
+        stem = file.stem
+        pattern = f"{stem}_*{suffix}"
+        candidates = sorted(file.parent.glob(pattern))
+        if not candidates:
+            raise FileNotFoundError(f"No file found matching {file} or {pattern}")
+        file = max(candidates, key=lambda p: p.stat().st_mtime)
 
-        df = pd.read_csv(file).copy()
-        pbar.update(1)
+    df = pd.read_csv(file).copy()
+    df["g_n_peaks"] = pd.to_numeric(df["g_n_peaks"], errors="coerce").fillna(0)
+    df["v_n_peaks"] = pd.to_numeric(df["v_n_peaks"], errors="coerce").fillna(0)
 
-        df["g_n_peaks"] = pd.to_numeric(df["g_n_peaks"], errors="coerce").fillna(0)
-        df["v_n_peaks"] = pd.to_numeric(df["v_n_peaks"], errors="coerce").fillna(0)
+    band_key = band.lower()
+    n_rows = len(df)
 
-        band_key = band.lower()
-        if band_key == "g":
-            mask = df["g_n_peaks"] > 0
-        elif band_key == "v":
-            mask = df["v_n_peaks"] > 0
-        elif band_key == "both":
-            mask = (df["g_n_peaks"] > 0) & (df["v_n_peaks"] > 0)
-        else:
-            mask = (df["g_n_peaks"] > 0) | (df["v_n_peaks"] > 0)
+    if n_workers and n_workers > 1 and n_rows > 0:
+        splits = [chunk for chunk in np.array_split(df, min(n_workers, n_rows)) if len(chunk)]
+        out_chunks: list[pd.DataFrame] = []
+        with tqdm(
+            total=n_rows,
+            desc="candidates_with_peaks_naive",
+            unit="rows",
+            leave=False,
+            dynamic_ncols=True,
+        ) as pbar:
+            with ProcessPoolExecutor(max_workers=n_workers) as ex:
+                futures = {
+                    ex.submit(_filter_candidates_chunk, chunk, band_key): len(chunk)
+                    for chunk in splits
+                }
+                for fut in as_completed(futures):
+                    out_chunks.append(fut.result())
+                    pbar.update(futures[fut])
+        out = pd.concat(out_chunks, ignore_index=True) if out_chunks else df.iloc[0:0].copy()
+    else:
+        with tqdm(total=3, desc="candidates_with_peaks_naive", leave=False) as pbar:
+            pbar.update(1)
+            if band_key == "g":
+                mask = df["g_n_peaks"] > 0
+            elif band_key == "v":
+                mask = df["v_n_peaks"] > 0
+            elif band_key == "both":
+                mask = (df["g_n_peaks"] > 0) & (df["v_n_peaks"] > 0)
+            else:
+                mask = (df["g_n_peaks"] > 0) | (df["v_n_peaks"] > 0)
+            pbar.update(1)
+            out = df.loc[mask].reset_index(drop=True)
+            pbar.update(1)
 
-        out = df.loc[mask].reset_index(drop=True)
-        out["source_file"] = file.name
+    out["source_file"] = file.name
 
-        if write_csv:
-            dest = (
-                Path(out_csv_path)
-                if out_csv_path is not None
-                else file.parent / f"{file.stem}_selected_dippers.csv"
-            )
-            out.to_csv(dest, index=index)
-        pbar.update(1)
+    if write_csv:
+        dest = (
+            Path(out_csv_path)
+            if out_csv_path is not None
+            else file.parent / f"{file.stem}_selected_dippers.csv"
+        )
+        out.to_csv(dest, index=index)
 
     return out
 
@@ -259,6 +231,7 @@ def filter_dip_dominated(
     v_flag_col = _first_col(df, "v_dip_dominated", "v_dipdom")
 
     n0 = len(df)
+    pbar = tqdm(total=2, desc="filter_dip_dominated", leave=False) if show_tqdm else None
     if g_frac_col or v_frac_col:
         mask = pd.Series(False, index=df.index)
         if g_frac_col:
@@ -266,6 +239,8 @@ def filter_dip_dominated(
         if v_frac_col:
             mask |= df[v_frac_col].astype(float) >= min_dip_fraction
         out = df.loc[mask].reset_index(drop=True)
+        if pbar:
+            pbar.update(1)
     elif g_flag_col or v_flag_col:
         mask = pd.Series(False, index=df.index)
         if g_flag_col:
@@ -273,12 +248,19 @@ def filter_dip_dominated(
         if v_flag_col:
             mask |= df[v_flag_col].astype(bool)
         out = df.loc[mask].reset_index(drop=True)
+        if pbar:
+            pbar.update(1)
     else:
         tqdm.write("[filter_dip_dominated] No dip-fraction/flag columns found; passing through.")
         out = df.reset_index(drop=True)
+        if pbar:
+            pbar.update(1)
 
     if show_tqdm:
         tqdm.write(f"[filter_dip_dominated] kept {len(out)}/{n0}")
+    if pbar:
+        pbar.update(1)
+        pbar.close()
     return out
 
 
@@ -299,14 +281,22 @@ def filter_multi_camera(
         "n_unique_cameras", "camera_count"
     )
     n0 = len(df)
+    pbar = tqdm(total=2, desc="filter_multi_camera", leave=False) if show_tqdm else None
     if cam_col:
         out = df.loc[df[cam_col].astype(int) >= min_cameras].reset_index(drop=True)
+        if pbar:
+            pbar.update(1)
     else:
         tqdm.write("[filter_multi_camera] No camera-count column found; passing through.")
         out = df.reset_index(drop=True)
+        if pbar:
+            pbar.update(1)
 
     if show_tqdm:
         tqdm.write(f"[filter_multi_camera] kept {len(out)}/{n0}")
+    if pbar:
+        pbar.update(1)
+        pbar.close()
     return out
 
 
@@ -332,24 +322,39 @@ def filter_periodic_candidates(
     per_col = _first_col(df, "best_period", "ls_best_period", "period_best")
     n0 = len(df)
     mask = pd.Series(True, index=df.index)
+    pbar = tqdm(total=3, desc="filter_periodic_candidates", leave=False) if show_tqdm else None
 
     if power_col:
         mask &= df[power_col].astype(float) <= float(max_power)
+        if pbar:
+            pbar.update(1)
     else:
         tqdm.write("[filter_periodic_candidates] No power column found; skipping power filter.")
+        if pbar:
+            pbar.update(1)
 
     if (min_period is not None or max_period is not None) and per_col:
         if min_period is not None:
             mask &= df[per_col].astype(float) >= float(min_period)
         if max_period is not None:
             mask &= df[per_col].astype(float) <= float(max_period)
+        if pbar:
+            pbar.update(1)
     elif (min_period is not None or max_period is not None) and not per_col:
         tqdm.write("[filter_periodic_candidates] No best-period column found; skipping period bounds.")
+        if pbar:
+            pbar.update(1)
+    else:
+        if pbar:
+            pbar.update(1)
 
     out = df.loc[mask].reset_index(drop=True)
 
     if show_tqdm:
         tqdm.write(f"[filter_periodic_candidates] kept {len(out)}/{n0}")
+    if pbar:
+        pbar.update(1)
+        pbar.close()
     return out
 
 
@@ -371,6 +376,10 @@ def filter_sparse_lightcurves(
     ppd_col = _first_col(df, "points_per_day", "ppd", "n_per_day")
 
     n0 = len(df)
+    pbar = tqdm(total=3, desc="filter_sparse_lightcurves", leave=False) if show_tqdm else None
+    if pbar:
+        pbar.update(1)
+
     if span_col and ppd_col:
         mask = (df[span_col].astype(float) >= float(min_time_span)) & \
                (df[ppd_col].astype(float) >= float(min_points_per_day))
@@ -387,8 +396,14 @@ def filter_sparse_lightcurves(
         tqdm.write("[filter_sparse_lightcurves] No sparsity metrics found; passing through.")
         out = df.reset_index(drop=True)
 
+    if pbar:
+        pbar.update(1)
+
     if show_tqdm:
         tqdm.write(f"[filter_sparse_lightcurves] kept {len(out)}/{n0}")
+    if pbar:
+        pbar.update(1)
+        pbar.close()
     return out
 
 
@@ -414,7 +429,6 @@ def filter_sigma_resid(
     df: pd.DataFrame,
     *,
     min_sigma: float = 3.0,
-    n_helpers: int = 1,
     show_tqdm: bool = False,
 ) -> pd.DataFrame:
     """
@@ -457,22 +471,14 @@ def filter_sigma_resid(
 
     it = rows.itertuples(index=False)
     results = {}
-    if n_helpers and n_helpers > 1:
-        with ProcessPoolExecutor(max_workers=n_helpers) as ex:
-            futs = [ex.submit(_eval_row, r._asdict()) for r in it]
-            prog = tqdm(total=len(futs), desc="filter_sigma_resid", leave=False) if show_tqdm else None
-            for f in as_completed(futs):
-                i, ok = f.result()
-                results[i] = ok
-                if prog: prog.update(1)
-            if prog: prog.close()
-    else:
-        prog = tqdm(total=len(df), desc="filter_sigma_resid", leave=False) if show_tqdm else None
-        for r in it:
-            i, ok = _eval_row(r._asdict())
-            results[i] = ok
-            if prog: prog.update(1)
-        if prog: prog.close()
+    prog = tqdm(total=len(df), desc="filter_sigma_resid (rows)", leave=False) if show_tqdm else None
+    for r in it:
+        i, ok = _eval_row(r._asdict())
+        results[i] = ok
+        if prog:
+            prog.update(1)
+    if prog:
+        prog.close()
 
     mask = rows[idx_name].map(results).astype(bool)
     out = df.loc[mask.values].reset_index(drop=True)
@@ -495,7 +501,6 @@ def filter_csv(
     min_points_per_day: float = 0.05,
     min_sigma: float = 3.0,
     match_radius_arcsec: float = 3.0,
-    n_helpers: int = 60,
     apply_bns: bool = True,
     apply_vsx_class: bool = True,
     apply_dip_dom: bool = True,
@@ -503,17 +508,21 @@ def filter_csv(
     apply_periodic: bool = True,
     apply_sparse: bool = True,
     apply_sigma: bool = True,
-    chunk_size: int | None = None,
+    seed_workers: int = 1,
     tqdm_position_base: int = 0,
 ) -> pd.DataFrame:
     """
     Orchestrates the optional filtering/enrichment steps with:
       - outer tqdm over enabled steps
-      - inner tqdm per step (rows/s)
-      - process-based parallelization for each step using chunking
+      - inner tqdm per step
     """
-    # Step 0: seed set (with its own tiny progress)
-    df_filtered = candidates_with_peaks_naive(csv_path, write_csv=False, band=band)
+    # Step 0: seed set (parallelizable)
+    df_filtered = candidates_with_peaks_naive(
+        csv_path,
+        write_csv=False,
+        band=band,
+        n_workers=seed_workers,
+    )
 
     # Build a plan of steps to run: (step_name, func_name, kwargs)
     plan: list[tuple[str, str, dict]] = []
@@ -522,23 +531,37 @@ def filter_csv(
         plan.append(("bns_join", "filter_bns", {"asassn_csv": asassn_csv}))
 
     if apply_dip_dom:
-        plan.append(("dip_dominated", "filter_dip_dominated", {"min_dip_fraction": min_dip_fraction}))
+        plan.append(("dip_dominated", "filter_dip_dominated", {
+            "min_dip_fraction": min_dip_fraction,
+            "show_tqdm": True,
+        }))
 
     if apply_multi_camera:
-        plan.append(("multi_camera", "filter_multi_camera", {"min_cameras": min_cameras}))
+        plan.append(("multi_camera", "filter_multi_camera", {
+            "min_cameras": min_cameras,
+            "show_tqdm": True,
+        }))
 
     if apply_periodic:
         plan.append(("periodic", "filter_periodic_candidates", {
-            "max_power": max_power, "min_period": min_period, "max_period": max_period
+            "max_power": max_power,
+            "min_period": min_period,
+            "max_period": max_period,
+            "show_tqdm": True,
         }))
 
     if apply_sparse:
         plan.append(("sparse", "filter_sparse_lightcurves", {
-            "min_time_span": min_time_span, "min_points_per_day": min_points_per_day
+            "min_time_span": min_time_span,
+            "min_points_per_day": min_points_per_day,
+            "show_tqdm": True,
         }))
 
     if apply_sigma:
-        plan.append(("sigma", "filter_sigma_resid", {"min_sigma": min_sigma}))
+        plan.append(("sigma", "filter_sigma_resid", {
+            "min_sigma": min_sigma,
+            "show_tqdm": True,
+        }))
 
     if apply_vsx_class:
         plan.append(("vsx_class", "vsx_class_extract", {
@@ -550,12 +573,10 @@ def filter_csv(
         # Outer bar over enabled steps
         with tqdm(total=total_steps, desc="filter_csv (steps)", position=tqdm_position_base, leave=False) as outer:
             for i, (label, func_name, kwargs) in enumerate(plan):
-                df_filtered = _run_step_parallel(
+                df_filtered = _run_step_sequential(
                     df_filtered,
                     func_name=func_name,
                     func_kwargs=kwargs,
-                    n_workers=n_helpers,
-                    chunk_size=chunk_size,
                     step_desc=f"{i+1}/{total_steps} {label}",
                     position=tqdm_position_base + 1,
                 )
