@@ -2,7 +2,6 @@ from __future__ import annotations
 from pathlib import Path
 from datetime import datetime
 import argparse
-from argparse import BooleanOptionalAction
 import re
 import fnmatch
 import pandas as pd
@@ -71,13 +70,24 @@ def gather_files(
 
     return files_list
 
-def run_one(file_path: Path, args, ts: str) -> pd.DataFrame:
-    """Run filter_csv for a single input CSV and write a timestamped output CSV next to it."""
-    out_csv_path = file_path.parent / f"{file_path.stem}_filtered_{ts}.csv"
+def run_one(
+    file_path: Path,
+    args,
+    ts: str,
+    *,
+    out_dir: Path | None = None,
+    out_path_override: Path | None = None,
+) -> pd.DataFrame:
+    """Run filter_csv for a single input CSV and write a timestamped output CSV."""
+    if out_path_override is not None:
+        out_csv_path = out_path_override
+    else:
+        target_dir = out_dir if out_dir is not None else file_path.parent
+        out_csv_path = target_dir / f"{file_path.stem}_filtered_{ts}.csv"
 
     df = filter_csv(
         csv_path=file_path,
-        out_csv_path=out_csv_path,     # mirror next to source
+        out_csv_path=out_csv_path,
         band=args.band,
         asassn_csv=args.asassn_csv,
         vsx_csv=args.vsx_csv,
@@ -136,26 +146,37 @@ def main() -> int:
     p.add_argument("--max-period", type=float, default=None)
     p.add_argument("--match-radius-arcsec", type=float, default=3.0)
     p.add_argument("--n-helpers", type=int, default=60)
-    p.add_argument("--bns", dest="apply_bns", action=BooleanOptionalAction, default=True,
-                   help="Apply the bright-nearby-star (catalog) join (use --no-bns to disable).")
-    p.add_argument("--vsx-class", dest="apply_vsx_class", action=BooleanOptionalAction, default=True,
-                   help="Append VSX variability classes (use --no-vsx-class to disable).")
-    p.add_argument("--dip-dom", dest="apply_dip_dom", action=BooleanOptionalAction, default=False,
-                   help="Apply the dip-dominated fraction filter (use --no-dip-dom to disable).")
-    p.add_argument("--multi-camera", dest="apply_multi_camera", action=BooleanOptionalAction, default=False,
-                   help="Apply the multi-camera filter (use --no-multi-camera to disable).")
-    p.add_argument("--periodic", dest="apply_periodic", action=BooleanOptionalAction, default=False,
-                   help="Apply the periodicity filter (use --no-periodic to disable).")
-    p.add_argument("--sparse", dest="apply_sparse", action=BooleanOptionalAction, default=False,
-                   help="Apply the sparse light-curve filter (use --no-sparse to disable).")
-    p.add_argument("--sigma", dest="apply_sigma", action=BooleanOptionalAction, default=False,
-                   help="Apply the sigma-based depth filter (use --no-sigma to disable).")
+    p.add_argument("--no-bns", dest="apply_bns", action="store_false", default=True,
+                   help="Disable the bright-nearby-star (catalog) join.")
+    p.add_argument("--no-vsx-class", dest="apply_vsx_class", action="store_false", default=True,
+                   help="Disable VSX variability class enrichment.")
+    p.add_argument("--no-dip-dom", dest="apply_dip_dom", action="store_false", default=False,
+                   help="Disable the dip-dominated fraction filter.")
+    p.add_argument("--no-multi-camera", dest="apply_multi_camera", action="store_false", default=False,
+                   help="Disable the multi-camera filter.")
+    p.add_argument("--no-periodic", dest="apply_periodic", action="store_false", default=False,
+                   help="Disable the periodicity filter.")
+    p.add_argument("--no-sparse", dest="apply_sparse", action="store_false", default=False,
+                   help="Disable the sparse light-curve filter.")
+    p.add_argument("--no-sigma", dest="apply_sigma", action="store_false", default=False,
+                   help="Disable the sigma-based depth filter.")
+    p.add_argument("--output", type=Path, default=None,
+                   help="Destination CSV path when processing a single file.")
+    p.add_argument("--output-dir", type=Path, default=None,
+                   help="Directory to place output CSVs (per-file and combined).")
     p.add_argument("--chunk-size", type=int, default=None)
 
     args = p.parse_args()
     ts = datetime.now().astimezone().strftime("%Y%m%d_%H%M%S%z")
 
     in_path = args.csv_path
+    output_override = args.output.expanduser() if args.output is not None else None
+    output_dir = args.output_dir.expanduser() if args.output_dir is not None else None
+
+    if output_override and in_path.is_dir():
+        p.error("--output is only valid when processing a single input file.")
+    if output_dir and output_dir.exists() and not output_dir.is_dir():
+        p.error("--output-dir must be a directory.")
 
     # Case 1: directory — select subset, mirror outputs next to each input
     if in_path.is_dir():
@@ -177,18 +198,26 @@ def main() -> int:
 
         dfs: list[pd.DataFrame] = []
         for f in files:
-            dfs.append(run_one(f, args, ts))
+            dfs.append(run_one(f, args, ts, out_dir=output_dir))
 
         if not args.no_combined:
             combined = pd.concat(dfs, ignore_index=True) if dfs else pd.DataFrame()
-            combined_csv = in_path / f"peaks_all_filtered_{ts}.csv"
+            combined_dir = output_dir if output_dir is not None else in_path
+            combined_csv = combined_dir / f"peaks_all_filtered_{ts}.csv"
+            combined_dir.mkdir(parents=True, exist_ok=True)
             combined.to_csv(combined_csv, index=False)
             print(f"[COMBINED] {combined_csv} ({len(combined)} rows)")
         return 0
 
     # Case 2: single file (or a stem your module resolves) — mirror output next to it
     if in_path.is_file() or not in_path.exists():
-        df = run_one(in_path, args, ts)
+        df = run_one(
+            in_path,
+            args,
+            ts,
+            out_dir=output_dir,
+            out_path_override=output_override,
+        )
         print(f"Filtered rows: {len(df)}")
         return 0
 
