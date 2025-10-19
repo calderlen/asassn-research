@@ -14,6 +14,9 @@ from astropy import units as u
 
 from vsx_crossmatch import propagate_asassn_coords, vsx_coords
 
+
+# parallelization helpers
+
 def _iter_chunks(df: pd.DataFrame, chunk_size: int) -> Iterable[pd.DataFrame]:
     """Yield consecutive row chunks of a DataFrame."""
     n = len(df)
@@ -101,9 +104,7 @@ def _run_step_parallel(
     return pd.concat(out_chunks, ignore_index=True) if out_chunks else df_in.iloc[0:0].copy()
 
 
-# ---------------------------
-# Your functions (with tqdm)
-# ---------------------------
+# filtration functions
 
 def candidates_with_peaks_naive(
     csv_path,
@@ -215,11 +216,6 @@ def vsx_class_extract(
         pbar.update(1)
 
     return df_out
-
-
-# ---------------------------------------------------
-# filter_csv with nested tqdm + per-step parallelism
-# ---------------------------------------------------
 
 def filter_csv(
     csv_path: str | Path,
