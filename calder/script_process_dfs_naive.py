@@ -2,6 +2,7 @@ from __future__ import annotations
 from pathlib import Path
 from datetime import datetime
 import argparse
+from argparse import BooleanOptionalAction
 import re
 import fnmatch
 import pandas as pd
@@ -85,16 +86,18 @@ def run_one(file_path: Path, args, ts: str) -> pd.DataFrame:
         max_power=args.max_power,
         min_period=args.min_period,
         max_period=args.max_period,
-        min_time_span=200.0,       # defaults preserved (even if steps are skipped)
+        min_time_span=200.0,       # defaults preserved even if filters are disabled
         min_points_per_day=0.05,
         min_sigma=3.0,
         match_radius_arcsec=args.match_radius_arcsec,
         n_helpers=args.n_helpers,
-        skip_dip_dom=args.skip_dip_dom,
-        skip_multi_camera=args.skip_multi_camera,
-        skip_periodic=args.skip_periodic,
-        skip_sparse=True,          # your current config
-        skip_sigma=True,           # your current config
+        apply_bns=args.apply_bns,
+        apply_vsx_class=args.apply_vsx_class,
+        apply_dip_dom=args.apply_dip_dom,
+        apply_multi_camera=args.apply_multi_camera,
+        apply_periodic=args.apply_periodic,
+        apply_sparse=args.apply_sparse,
+        apply_sigma=args.apply_sigma,
         chunk_size=args.chunk_size,
         tqdm_position_base=0,
     )
@@ -133,9 +136,20 @@ def main() -> int:
     p.add_argument("--max-period", type=float, default=None)
     p.add_argument("--match-radius-arcsec", type=float, default=3.0)
     p.add_argument("--n-helpers", type=int, default=60)
-    p.add_argument("--skip-dip-dom", action="store_true", default=True)
-    p.add_argument("--skip-multi-camera", action="store_true", default=True)
-    p.add_argument("--skip-periodic", action="store_true", default=True)
+    p.add_argument("--bns", dest="apply_bns", action=BooleanOptionalAction, default=True,
+                   help="Apply the bright-nearby-star (catalog) join (use --no-bns to disable).")
+    p.add_argument("--vsx-class", dest="apply_vsx_class", action=BooleanOptionalAction, default=True,
+                   help="Append VSX variability classes (use --no-vsx-class to disable).")
+    p.add_argument("--dip-dom", dest="apply_dip_dom", action=BooleanOptionalAction, default=False,
+                   help="Apply the dip-dominated fraction filter (use --no-dip-dom to disable).")
+    p.add_argument("--multi-camera", dest="apply_multi_camera", action=BooleanOptionalAction, default=False,
+                   help="Apply the multi-camera filter (use --no-multi-camera to disable).")
+    p.add_argument("--periodic", dest="apply_periodic", action=BooleanOptionalAction, default=False,
+                   help="Apply the periodicity filter (use --no-periodic to disable).")
+    p.add_argument("--sparse", dest="apply_sparse", action=BooleanOptionalAction, default=False,
+                   help="Apply the sparse light-curve filter (use --no-sparse to disable).")
+    p.add_argument("--sigma", dest="apply_sigma", action=BooleanOptionalAction, default=False,
+                   help="Apply the sigma-based depth filter (use --no-sigma to disable).")
     p.add_argument("--chunk-size", type=int, default=None)
 
     args = p.parse_args()

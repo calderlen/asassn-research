@@ -483,17 +483,19 @@ def filter_csv(
     min_sigma: float = 3.0,
     match_radius_arcsec: float = 3.0,
     n_helpers: int = 60,
-    skip_dip_dom: bool = False,
-    skip_multi_camera: bool = False,
-    skip_periodic: bool = False,
-    skip_sparse: bool = True,   # not used for now
-    skip_sigma: bool = True,    # not used for now
+    apply_bns: bool = True,
+    apply_vsx_class: bool = True,
+    apply_dip_dom: bool = True,
+    apply_multi_camera: bool = True,
+    apply_periodic: bool = True,
+    apply_sparse: bool = True,
+    apply_sigma: bool = True,
     chunk_size: int | None = None,
     tqdm_position_base: int = 0,
 ) -> pd.DataFrame:
     """
-    Orchestrates all filters with:
-      - outer tqdm over steps
+    Orchestrates the optional filtering/enrichment steps with:
+      - outer tqdm over enabled steps
       - inner tqdm per step (rows/s)
       - process-based parallelization for each step using chunking
     """
@@ -503,68 +505,54 @@ def filter_csv(
     # Build a plan of steps to run: (step_name, func_name, kwargs)
     plan: list[tuple[str, str, dict]] = []
 
-    if not skip_dip_dom:
+    if apply_bns:
+        plan.append(("bns_join", "filter_bns", {"asassn_csv": asassn_csv}))
+
+    if apply_dip_dom:
         plan.append(("dip_dominated", "filter_dip_dominated", {"min_dip_fraction": min_dip_fraction}))
 
-    if not skip_multi_camera:
+    if apply_multi_camera:
         plan.append(("multi_camera", "filter_multi_camera", {"min_cameras": min_cameras}))
 
-    if not skip_periodic:
+    if apply_periodic:
         plan.append(("periodic", "filter_periodic_candidates", {
             "max_power": max_power, "min_period": min_period, "max_period": max_period
         }))
 
-    if not skip_sparse:
+    if apply_sparse:
         plan.append(("sparse", "filter_sparse_lightcurves", {
             "min_time_span": min_time_span, "min_points_per_day": min_points_per_day
         }))
 
-    if not skip_sigma:
+    if apply_sigma:
         plan.append(("sigma", "filter_sigma_resid", {"min_sigma": min_sigma}))
 
-    # Optional “pre” join to ASAS-SN catalog if you want it upstream of other filters:
-    # plan.insert(0, ("bns_join", "filter_bns", {"asassn_csv": asassn_csv}))
+    if apply_vsx_class:
+        plan.append(("vsx_class", "vsx_class_extract", {
+            "vsx_csv": vsx_csv, "match_radius_arcsec": match_radius_arcsec
+        }))
 
-    # Outer bar over steps
-    with tqdm(total=len(plan), desc="filter_csv (steps)", position=tqdm_position_base, leave=False) as outer:
-        for i, (label, func_name, kwargs) in enumerate(plan):
-            # Merge step-specific kwargs that may need global params (no ** unpacking)
-            if func_name == "filter_bns":
-                kwargs = dict(kwargs)
-                kwargs["asassn_csv"] = asassn_csv
-            elif func_name == "vsx_class_extract":
-                kwargs = dict(kwargs)
-                kwargs["vsx_csv"] = vsx_csv
-                kwargs["match_radius_arcsec"] = match_radius_arcsec
-
-            # n_helpers handled here globally — individual functions need not know about parallelism
-            df_filtered = _run_step_parallel(
-                df_filtered,
-                func_name=func_name,
-                func_kwargs=kwargs,
-                n_workers=n_helpers,
-                chunk_size=chunk_size,
-                step_desc=f"{i+1}/{len(plan)} {label}",
-                position=tqdm_position_base + 1,
-            )
-            outer.set_postfix_str(label)
-            outer.update(1)
+    total_steps = len(plan)
+    if total_steps:
+        # Outer bar over enabled steps
+        with tqdm(total=total_steps, desc="filter_csv (steps)", position=tqdm_position_base, leave=False) as outer:
+            for i, (label, func_name, kwargs) in enumerate(plan):
+                df_filtered = _run_step_parallel(
+                    df_filtered,
+                    func_name=func_name,
+                    func_kwargs=kwargs,
+                    n_workers=n_helpers,
+                    chunk_size=chunk_size,
+                    step_desc=f"{i+1}/{total_steps} {label}",
+                    position=tqdm_position_base + 1,
+                )
+                outer.set_postfix_str(label)
+                outer.update(1)
 
     df_filtered = df_filtered.reset_index(drop=True)
 
     if out_csv_path is not None:
         Path(out_csv_path).parent.mkdir(parents=True, exist_ok=True)
         df_filtered.to_csv(out_csv_path, index=False)
-
-    # If you want VSX appended as the final (non-filtering) enrichment step WITH progress:
-    # df_filtered = _run_step_parallel(
-    #     df_filtered,
-    #     func_name="vsx_class_extract",
-    #     func_kwargs={"vsx_csv": vsx_csv, "match_radius_arcsec": match_radius_arcsec},
-    #     n_workers=n_helpers,
-    #     chunk_size=chunk_size,
-    #     step_desc=f"{len(plan)+1}/{len(plan)+1} vsx_class_extract",
-    #     position=tqdm_position_base + 1,
-    # )
 
     return df_filtered
