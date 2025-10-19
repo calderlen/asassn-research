@@ -1,6 +1,6 @@
 from __future__ import annotations
 from pathlib import Path
-from concurrent.futures import ProcessPoolExecutor, as_completed
+from concurrent.futures import ProcessPoolExecutor, as_completed, BrokenProcessPool
 from time import perf_counter
 from typing import Dict, Any, Iterable, List, Optional
 import pandas as pd
@@ -84,17 +84,30 @@ def _run_step_parallel(
 
     # Parallel path
     out_chunks: List[pd.DataFrame] = []
-    with ProcessPoolExecutor(max_workers=n_workers, mp_context=None) as ex:
-        futures = {}
-        for ch in _iter_chunks(df_in, chunk_size):
-            # Capture chunk length for progress updates on completion
-            futures[ex.submit(_call_filter_by_name, func_name, ch, func_kwargs)] = len(ch)
+    try:
+        with ProcessPoolExecutor(max_workers=n_workers, mp_context=None) as ex:
+            futures = {}
+            for ch in _iter_chunks(df_in, chunk_size):
+                # Capture chunk length for progress updates on completion
+                futures[ex.submit(_call_filter_by_name, func_name, ch, func_kwargs)] = len(ch)
 
-        for fut in as_completed(futures):
-            rows_done = futures[fut]
-            res = fut.result()
-            out_chunks.append(res)
-            pbar.update(rows_done)
+            for fut in as_completed(futures):
+                rows_done = futures[fut]
+                res = fut.result()
+                out_chunks.append(res)
+                pbar.update(rows_done)
+    except BrokenProcessPool:
+        pbar.close()
+        tqdm.write(f"[{step_desc}] parallel workers failed; retrying sequentially (consider lowering --n-helpers).")
+        return _run_step_parallel(
+            df_in,
+            func_name=func_name,
+            func_kwargs=func_kwargs,
+            n_workers=0,
+            chunk_size=chunk_size,
+            step_desc=step_desc,
+            position=position,
+        )
 
     pbar.close()
     elapsed = perf_counter() - start

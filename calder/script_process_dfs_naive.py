@@ -145,7 +145,7 @@ def main() -> int:
     p.add_argument("--min-period", type=float, default=None)
     p.add_argument("--max-period", type=float, default=None)
     p.add_argument("--match-radius-arcsec", type=float, default=3.0)
-    p.add_argument("--n-helpers", type=int, default=60)
+    p.add_argument("--n-helpers", type=int, default=10)
     p.add_argument("--no-bns", dest="apply_bns", action="store_false", default=True,
                    help="Disable the bright-nearby-star (catalog) join.")
     p.add_argument("--no-vsx-class", dest="apply_vsx_class", action="store_false", default=True,
