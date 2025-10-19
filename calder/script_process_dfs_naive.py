@@ -133,9 +133,9 @@ def main() -> int:
     p.add_argument("--max-period", type=float, default=None)
     p.add_argument("--match-radius-arcsec", type=float, default=3.0)
     p.add_argument("--n-helpers", type=int, default=60)
-    p.add_argument("--skip-dip-dom", action="store_true", default=False)
-    p.add_argument("--skip-multi-camera", action="store_true", default=False)
-    p.add_argument("--skip-periodic", action="store_true", default=False)
+    p.add_argument("--skip-dip-dom", action="store_true", default=True)
+    p.add_argument("--skip-multi-camera", action="store_true", default=True)
+    p.add_argument("--skip-periodic", action="store_true", default=True)
     p.add_argument("--chunk-size", type=int, default=None)
 
     args = p.parse_args()
