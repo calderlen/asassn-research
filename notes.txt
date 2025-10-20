@@ -7,7 +7,7 @@ titipu:     250.03 GiB of RAM and 80 processors
 
 PIPELINE REPRODUCES BRAYDEN'S CANDIDATES?
 
-Source           Source ID        Category                    Detected?   Detection Details         RA [deg]    DEC [deg]     Search Method   # of Dips   Max Duration [days]   Start of Most Recent Dip   Max Depth [mag]   Mean g [mag]   Mean Abs G [mag]   GBP−GRP [mag]   RVamp [km/s]   RUWE    Distance [pc]
+Source           Source ID        Category                    Detected?   Detection Details         RA [deg]    DEC [deg]     Search Method   # of Dips   Max Duration [days]   Start of Most Recent Dip   Max Depth [mag]   Mean g [mag]   Mean Abs G [mag]   GBP−GRP [mag]    RVamp [km/s]     RUWE      Distance [pc]
 -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 J042214+152530   377957522430     Dippers                     YES         mag_bin=13_13.5; g_peaks=7 65.55736    15.42494      Pipeline        6           44.2                  04/10/2022                 1.02              13.35           3.47             1.17             54.18           1.31    288+2−2
 J202402+383938   42950993887      Dippers                     YES         mag_bin=13_13.5; g_peaks=1 306.00941   38.66055      Pipeline        7           1709.6                15/04/2018                 0.76              13.11          -0.81             0.88              1.46                   1827+52−46
@@ -43,7 +43,9 @@ J183210-173432   317827964025     Single Eclipse Binaries     NO          —   
 
 
 Brayden's candidates matching to the raw vsx catalog, so the the other 14 are not in the vsx catalog
-category,name,class
+
+category                    name                class
+----------------------------------------------------------
 Single Eclipse Binaries,    J073234-200049,     EA
 Single Eclipse Binaries,    J175602+013135,     EA/RS
 Single Eclipse Binaries,    J223332+565552,     EA
