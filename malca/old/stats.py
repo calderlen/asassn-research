@@ -124,7 +124,7 @@ def compute_stats(asassn_id, path, use_only_good=True, drop_dupes=True, use_g=Tr
     # filtering
     base_n = len(df)
     if use_only_good:
-        df = df[(df["good_bad"] == 1) & (df["saturated"] == 0)].reset_index(drop=True)
+        df = df[df["saturated"] == 0].reset_index(drop=True)
     kept_n = len(df)
 
     # time axis in days since first exposure (JD is in days already)
@@ -398,7 +398,7 @@ def load_dat(path, has_header=False):
 def main():
     ap = argparse.ArgumentParser(description="Compute rich stats for a photometry .dat file.")
     ap.add_argument("path", help="path to .dat file")
-    ap.add_argument("--include-all", action="store_true", help="do NOT filter by good_bad==1 & saturated==0")
+    ap.add_argument("--include-all", action="store_true", help="include saturated observations")
     ap.add_argument("--keep-dupes",   action="store_true", help="keep duplicate JD rows instead of dropping")
     ap.add_argument("--has-header",   action="store_true", help="file has a header row")
     args = ap.parse_args()

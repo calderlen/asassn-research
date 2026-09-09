@@ -255,9 +255,6 @@ COLUMN_ALIASES = {
         "quality",
         "quality flag",
         "quality_flag",
-        "good bad",
-        "good_bad",
-        "goodbad",
         "flag",
     ),
     "saturated": (

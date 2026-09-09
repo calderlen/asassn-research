@@ -57,7 +57,7 @@
 \multicolumn{4}{@{}l}{\textit{Input and observation-level quality control}} \\
 \addlinespace[2pt]
 \stvcutrow{Light-curve availability}{A manifest row is processed only when its expected ASAS-SN light-curve file exists.}{Hard}{\texttt{dat\_exists}; \texttt{build\_manifest()} in \texttt{malca/io/manifest.py}.}
-\stvcutrow{Canonical row quality}{When present, require \texttt{good\_bad}=1 and \texttt{saturated}=0. Always require finite JD, magnitude, and uncertainty, with uncertainty $>0$.}{Hard (row removal)}{Applied by \texttt{clean\_lc()} before tag statistics and event scoring. Missing quality/saturation columns are tolerated for compatible input formats.}
+\stvcutrow{Canonical row quality}{Ignore \texttt{good\_bad}. When present, require \texttt{saturated}=0. Always require finite JD, magnitude, and uncertainty, with uncertainty $>0$.}{Hard (row removal)}{Applied by \texttt{clean\_lc()} before tag statistics and event scoring. A missing saturation column is tolerated for compatible input formats.}
 \stvcutrow{Uncertainty quality}{Require $\sigma_m < 1.0$ mag, then remove uncertainty outliers by median-centered, MAD-based $5\sigma$ clipping. The clipping is on the reported \emph{uncertainty}, not on magnitude.}{Hard (row removal)}{\texttt{clean\_lc()} with \texttt{CLEAN\_LC\_MAX\_ERROR\_ABSOLUTE}=1.0 and \texttt{CLEAN\_LC\_MAX\_ERROR\_SIGMA}=5.}
 \stvcutrow{Event-preparation validity}{After baseline construction, use only points with finite JD, magnitude, baseline, and effective uncertainty, and require $\sigma_{\rm eff}>0$.}{Hard (row removal; error if none remain)}{\texttt{score\_lightcurve()} / \texttt{score\_events\_bayesian()} in \texttt{malca/stv/events.py}.}
 

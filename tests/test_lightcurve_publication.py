@@ -47,7 +47,7 @@ def test_dat2_file_uses_existing_loader(tmp_path):
         "\n".join(
             [
                 "7479.8 14.10 0.02 1 4 0 0 ba/F1",
-                "7480.8 14.20 0.03 1 5 1 0 bb/F1",
+                "7480.8 14.20 0.03 0 5 1 0 bb/F1",
             ]
         )
     )
@@ -57,6 +57,18 @@ def test_dat2_file_uses_existing_loader(tmp_path):
 
     assert filtered["band"].tolist() == ["g", "V"]
     assert filtered["camera"].tolist() == ["4", "5"]
+
+
+def test_generic_csv_good_bad_does_not_hide_dip(tmp_path):
+    path = tmp_path / "lightcurve.csv"
+    pd.DataFrame(
+        {"JD": [2459000.0, 2459001.0], "mag": [14.0, 15.0],
+         "error": [0.02, 0.02], "good_bad": [1, 0]}
+    ).to_csv(path, index=False)
+
+    filtered = filter_lightcurve(load_lightcurve(path))
+
+    assert len(filtered) == 2
 
 
 def test_resolve_time_axis_auto_for_full_jd():

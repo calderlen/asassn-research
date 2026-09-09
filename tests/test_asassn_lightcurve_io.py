@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
+import pytest
 
 from malca.io.lightcurve_io import (
     CANONICAL_ASASSN_COLUMNS,
@@ -12,6 +13,23 @@ from malca.io.lightcurve_io import (
     normalize_asassn_lightcurve,
     to_asassn_algorithm_frame,
 )
+
+
+@pytest.mark.parametrize("extension", ["dat", "dat2", "dat3"])
+def test_native_loader_keeps_mixed_good_bad_flags(tmp_path, extension):
+    path = tmp_path / f"123.{extension}"
+    path.write_text(
+        "9000.5 14.0 0.02 1 1 0 0 ba/F1\n"
+        "9001.5 15.0 0.02 0 2 1 0 bb/F1\n"
+        "9002.5 14.0 0.02 0 2 1 1 bb/F1\n"
+        "9003.5 14.0 0.00 0 2 1 0 bb/F1\n"
+    )
+
+    frame = load_lightcurve_df(path)
+
+    assert frame["jd"].tolist() == [2459000.5, 2459001.5]
+    assert frame["mag"].tolist() == [14.0, 15.0]
+    assert frame["band"].tolist() == ["g", "V"]
 
 
 def test_load_skypatrol_csv_returns_canonical_schema(tmp_path):

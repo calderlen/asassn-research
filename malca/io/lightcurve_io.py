@@ -227,24 +227,12 @@ def _quality_from_raw(df: pd.DataFrame, index: pd.Index) -> pd.Series:
     if quality_col is not None:
         return df[quality_col].astype("string").fillna("").astype(str).str.strip().str.upper()
 
-    good_col = _find_column(df, ("good_bad", "good", "is_good"))
+    # The native good_bad column does not exclude observations.
+    good_col = _find_column(df, ("good", "is_good"))
     if good_col is None:
         return pd.Series("G", index=index, dtype="object")
 
-    if str(good_col).strip().lower() == "good_bad":
-        numeric = pd.to_numeric(df[good_col], errors="coerce")
-        if numeric.notna().any():
-            values = set(numeric.dropna().astype(int).unique().tolist())
-            if values in ({0}, {1}):
-                good = pd.Series(True, index=index)
-            elif values <= {0, 1}:
-                good = numeric.eq(1)
-            else:
-                good = numeric.ne(0)
-        else:
-            good = _boolish_series(df[good_col], default=True)
-    else:
-        good = _boolish_series(df[good_col], default=True)
+    good = _boolish_series(df[good_col], default=True)
     return good.map(lambda value: "G" if bool(value) else "B")
 
 

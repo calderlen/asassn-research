@@ -6,6 +6,7 @@ import pytest
 
 from malca.core.baseline import per_camera_gp_baseline_masked
 from malca.core.utils import (
+    clean_lc,
     compute_field_summary,
     fred,
     filter_bad_cameras,
@@ -13,6 +14,24 @@ from malca.core.utils import (
     identify_offset_cameras,
     identify_residual_bad_cameras,
 )
+
+
+def test_clean_lc_ignores_input_flag_but_keeps_other_quality_cuts() -> None:
+    raw = pd.DataFrame(
+        {
+            "JD": [1.0, 2.0, 3.0, 4.0, 5.0, np.nan, 7.0, 8.0],
+            "mag": [14.0, 15.0, 14.0, 14.0, 14.0, 14.0, np.nan, 14.0],
+            "error": [0.02, 0.02, 0.02, 0.0, 1.0, 0.02, 0.02, 0.03],
+            "good_bad": [1, 0, 0, 0, 0, 0, 0, 0],
+            "saturated": [0, 0, 1, 0, 0, 0, 0, 0],
+        }
+    )
+
+    cleaned = clean_lc(raw)
+
+    assert cleaned["JD"].tolist() == [1.0, 2.0]
+    assert cleaned["good_bad"].tolist() == [1, 0]
+    assert len(raw) == 8
 
 
 def test_peak_centered_bazin_fred_matches_requested_peak_and_quiescent_tails() -> None:

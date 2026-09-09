@@ -89,21 +89,14 @@ def load_light_curve(path: str | Path, *, target_id: str | None = None) -> Light
             "error": pd.to_numeric(df[err_col], errors="coerce"),
         }
     )
-    if "good_bad" in df.columns:
-        good = pd.to_numeric(df["good_bad"], errors="coerce").fillna(0).astype(int) == 1
-        out = out.loc[good].copy()
-        band_source = df.loc[good]
-    else:
-        band_source = df
-
     sat_col = _first_existing(df.columns, ("saturated", "saturated/unsaturated"))
     out["saturated"] = (
-        pd.to_numeric(band_source[sat_col], errors="coerce").fillna(0).astype(int).to_numpy()
+        pd.to_numeric(df[sat_col], errors="coerce").fillna(0).astype(int).to_numpy()
         if sat_col is not None
         else 0
     )
     band_col = _first_existing(df.columns, ("v_g_band", "v/g?", "band"))
-    out["v_g_band"] = _normalize_band(band_source[band_col] if band_col is not None else None, len(out))
+    out["v_g_band"] = _normalize_band(df[band_col] if band_col is not None else None, len(out))
 
     if out["JD"].notna().any() and float(out["JD"].median()) < 100000.0:
         out["JD"] = out["JD"] + SKYPATROL_JD_OFFSET

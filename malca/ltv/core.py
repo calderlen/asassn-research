@@ -2,7 +2,7 @@
 Refactor of the LTvar-style seasonal-trend code.
 
 Key behavior preserved from the brute-force version:
-- Read ASAS-SN .dat light curves, keep only good points and g-band (good/bad==1, v/g?==0)
+- Read ASAS-SN .dat light curves and apply shared cleaning; ignore the good/bad flag
 - Convert times from (jd ~ JD-2450000) to full JD via JD = jd + 2450000
 - Special hard-coded Target filter: 17181160895 drops JD < 2.458e6
 - Compute “season gap midpoints” from RA and dspring, then keep only midpoints inside [min(JD), max(JD)]

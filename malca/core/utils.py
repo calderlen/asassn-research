@@ -217,9 +217,8 @@ def validate_candidate_ids(
 def clean_lc(df, max_error_absolute=CLEAN_LC_MAX_ERROR_ABSOLUTE, max_error_sigma=CLEAN_LC_MAX_ERROR_SIGMA):
     """Apply the canonical STV observation-quality cuts.
 
-    The helper is intentionally tolerant of formats that do not provide
-    ``good_bad`` or ``saturated``; when present, however, those flags are always
-    honoured.  All STV measurements should derive from the returned rows.
+    The input ``good_bad`` flag is ignored. Saturation flags are honoured when
+    present. All STV measurements should derive from the returned rows.
     """
     required = [column for column in ("JD", "mag", "error") if column not in df.columns]
     if required:
@@ -233,9 +232,6 @@ def clean_lc(df, max_error_absolute=CLEAN_LC_MAX_ERROR_ABSOLUTE, max_error_sigma
     if "saturated" in df.columns:
         saturated = pd.to_numeric(df["saturated"], errors="coerce").fillna(1)
         base_mask &= saturated.to_numpy() == 0
-    if "good_bad" in df.columns:
-        good = pd.to_numeric(df["good_bad"], errors="coerce").fillna(0)
-        base_mask &= good.to_numpy() == 1
     base_mask &= df["JD"].notna().to_numpy() & df["mag"].notna().to_numpy()
     base_mask &= df["error"].notna().to_numpy() & (df["error"].to_numpy() > 0.0)
 

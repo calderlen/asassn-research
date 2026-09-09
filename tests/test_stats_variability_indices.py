@@ -136,9 +136,9 @@ def test_sokolovsky_summary_uses_available_single_band_when_only_one_exists() ->
 
     v_frame, v_summary = compute_sokolovsky_peak_to_peak_summary("source", ".", input_frame=frame)
 
-    assert len(v_frame) == 3
+    assert len(v_frame) == 4
     assert v_summary["sokolovsky_v_status"] == "ok"
-    assert v_summary["variability_sokolovsky_v"] == pytest.approx(1.6 / 21.8)
+    assert v_summary["variability_sokolovsky_v"] == pytest.approx(2.8 / 23.0)
     assert v_summary["sokolovsky_v_band"] == "V_only_no_g_reference"
 
 

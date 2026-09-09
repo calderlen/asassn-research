@@ -9,6 +9,7 @@ import pandas as pd
 import pytest
 
 from malca.ltv_new.api import fit_ltv_evidence
+from malca.ltv_new.io import load_light_curve
 from malca.ltv_new.likelihood import LightCurveData, gaussian_log_likelihood
 from malca.ltv_new.models import evaluate_mean
 from malca.ltv_new.priors import build_prior_transform
@@ -16,6 +17,22 @@ from malca.ltv_new.samplers import SamplerConfig
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
+def test_ltv_new_loader_ignores_good_bad_and_preserves_band_alignment(tmp_path) -> None:
+    path = tmp_path / "123.dat3"
+    path.write_text(
+        "9000.5 14.0 0.02 1 1 0 0 ba/F1\n"
+        "9001.5 15.0 0.02 0 2 1 0 bb/F1\n"
+        "9002.5 14.0 0.02 0 2 1 1 bb/F1\n"
+        "9003.5 14.0 0.00 0 2 1 0 bb/F1\n"
+    )
+
+    data = load_light_curve(path)
+
+    assert data.jd.tolist() == [2459000.5, 2459001.5]
+    assert data.mag.tolist() == [14.0, 15.0]
+    assert data.band.tolist() == [0, 1]
 
 
 def _synthetic_data() -> LightCurveData:
