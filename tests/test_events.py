@@ -26,6 +26,10 @@ from malca.stv.events import (
 from malca.core.baseline import per_camera_gp_baseline
 from malca.core.utils import fred
 from malca.products.feature_layers import to_layer_first_frame, with_feature_columns
+from malca.io.table_io import read_feature_table
+from malca.stv.filter import apply_filters
+from malca.stv.pipeline import _reconcile_cached_event_rows
+from malca.products.product_schema import ProductSchemaError, STV_EVENT_REQUIRED_COLUMNS, assert_stv_product_schema
 
 
 def _global_constant_baseline(df: pd.DataFrame, **kwargs) -> pd.DataFrame:
@@ -170,6 +174,77 @@ def _write_dat3(path: Path, times: np.ndarray, mags: np.ndarray, *, error: float
         )
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("\n".join(lines) + "\n", encoding="ascii")
+
+
+def test_all_cameras_filtered_writes_rejections_and_resolves_retry_errors(tmp_path, monkeypatch):
+    paths = []
+    metadata = []
+    for n_cameras in (3, 4):
+        path = tmp_path / f"{n_cameras}.dat3"
+        lines = []
+        for camera in range(1, n_cameras + 1):
+            for i in range(60):
+                jd = 9000 + 200 * camera + i
+                mag = 18.0 if i == 30 else 14.0
+                lines.append(f"{jd} {mag} 0.03 0 {camera} 0 0 cam{camera}/field1")
+        path.write_text("\n".join(lines) + "\n")
+        paths.append(str(path))
+        metadata.append(dict(
+            lc_path=str(path), raw_n_points=len(lines), clean_n_points=len(lines),
+            raw_n_cameras=n_cameras, tag_stats_status="ok", tag_stats_error="",
+            tag_stats_version=1,
+        ))
+    input_file = tmp_path / "paths.txt"
+    input_file.write_text("\n".join(paths) + "\n")
+    metadata_file = tmp_path / "metadata.parquet"
+    pd.DataFrame(metadata).to_parquet(metadata_file)
+    output_file = tmp_path / "events.parquet"
+    error_file = tmp_path / "errors.parquet"
+    pd.DataFrame({"lc_path": paths, "error": ["old cleaning failure"] * 2}).to_parquet(error_file)
+    config = _write_events_config(tmp_path, output_format="parquet", filter_bad_cameras=True)
+    monkeypatch.setattr("malca.stv.events.ProcessPoolExecutor", ThreadPoolExecutor)
+
+    def unexpected_scoring(*args, **kwargs):
+        pytest.fail("A source with every camera rejected must not enter baseline/event scoring")
+
+    monkeypatch.setattr("malca.stv.events.score_lightcurve", unexpected_scoring)
+    monkeypatch.setattr(sys, "argv", [
+        "malca.stv.events", "--input-file", str(input_file), "--metadata", str(metadata_file),
+        "--output", str(output_file), "--error-output", str(error_file),
+        "--config", str(config), "--workers", "1",
+    ])
+    events_main()
+    rows = read_feature_table(output_file)
+    reconciliation = _reconcile_cached_event_rows(rows, expected_paths=set(paths))
+    assert reconciliation.quarantined_rows.empty
+    assert reconciliation.reusable_paths == frozenset(paths)
+    for column, value in (("n_points", 1), ("n_cameras", 1), ("dip_significant", True),
+                          ("jump_significant", True), ("baseline_source", "gp_masked")):
+        invalid = with_feature_columns(rows, [column])
+        invalid[column] = value
+        with pytest.raises(ProductSchemaError):
+            assert_stv_product_schema(invalid, required=STV_EVENT_REQUIRED_COLUMNS)
+    expanded = with_feature_columns(rows, (
+        "n_points", "n_cameras", "raw_n_points", "clean_n_points", "raw_n_cameras",
+        "baseline_source", "bad_cameras_filtered", "dip_significant", "jump_significant",
+        "dip_bayes_factor", "jump_bayes_factor", "extra_json",
+    )).sort_values("candidate_id")
+    assert expanded["candidate_id"].tolist() == ["stv_3", "stv_4"]
+    assert expanded["n_points"].tolist() == [0, 0]
+    assert expanded["n_cameras"].tolist() == [0, 0]
+    assert expanded["raw_n_points"].tolist() == expanded["clean_n_points"].tolist() == [180, 240]
+    assert expanded["raw_n_cameras"].tolist() == [3, 4]
+    assert expanded["bad_cameras_filtered"].tolist() == ["1,2,3", "1,2,3,4"]
+    assert expanded["baseline_source"].eq("rejected_all_cameras").all()
+    assert not expanded[["dip_significant", "jump_significant"]].to_numpy().any()
+    assert expanded[["dip_bayes_factor", "jump_bayes_factor"]].isna().all().all()
+    assert all(json.loads(value)["event_rejection_reason"] == "all_cameras_filtered"
+               for value in expanded["extra_json"])
+    filtered = apply_filters(rows, apply_gaia_ruwe_validation=False, apply_gaia_pm_validation=False,
+                             apply_periodic_catalog_validation=False, show_tqdm=False)
+    assert filtered["failed_any"].all()
+    assert set(output_file.with_name("events_PROCESSED.txt").read_text().splitlines()) == set(paths)
+    assert not error_file.exists() or pd.read_parquet(error_file).empty
 
 
 def _periodic_dip_lightcurve() -> tuple[np.ndarray, np.ndarray]:

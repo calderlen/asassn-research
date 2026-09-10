@@ -223,6 +223,27 @@ def _missing_columns(df: pd.DataFrame, required: Iterable[str]) -> tuple[str, ..
     return tuple(column for column in required if not _has_required_column_or_feature(df, str(column)))
 
 
+_UNFITTED_EVENT_FIELDS = {"dip_best_delta_mag", "jump_best_delta_mag"}
+
+
+def _all_cameras_rejected_mask(df: pd.DataFrame) -> pd.Series:
+    """Recognize explicit camera rejections that cannot have fitted amplitudes."""
+    expected = {
+        "baseline_source": "rejected_all_cameras",
+        "n_points": 0,
+        "n_cameras": 0,
+        "dip_significant": False,
+        "jump_significant": False,
+    }
+    mask = pd.Series(True, index=df.index)
+    for column, value in expected.items():
+        values = _required_value_series(df, column)
+        if values is None:
+            return pd.Series(False, index=df.index)
+        mask &= values.eq(value).fillna(False)
+    return mask
+
+
 def _has_required_column_or_feature(df: pd.DataFrame, column: str) -> bool:
     if column in df.columns:
         return True
@@ -243,7 +264,10 @@ def _has_required_column_or_feature(df: pd.DataFrame, column: str) -> bool:
     # A layer key is part of the row schema, not a table-level suggestion.  An
     # ``any`` check allowed one populated row to make every other row appear
     # schema-complete.
-    return bool(df[layer].map(lambda value: key in parse_layer_value(value)).all())
+    present = df[layer].map(lambda value: key in parse_layer_value(value))
+    if column in _UNFITTED_EVENT_FIELDS:
+        present |= _all_cameras_rejected_mask(df)
+    return bool(present.all())
 
 
 def _present_columns(df: pd.DataFrame, forbidden: Iterable[str]) -> tuple[str, ...]:
@@ -304,6 +328,8 @@ def _assert_required_identity_values(
         missing = values.isna()
         if pd.api.types.is_object_dtype(values) or pd.api.types.is_string_dtype(values):
             missing = missing | values.astype("string").str.strip().eq("").fillna(True)
+        if column in _UNFITTED_EVENT_FIELDS:
+            missing &= ~_all_cameras_rejected_mask(df)
         if bool(missing.any()):
             raise ProductSchemaError(
                 timescale=timescale,

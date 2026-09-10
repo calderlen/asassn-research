@@ -1997,6 +1997,18 @@ def process_lightcurve(
     path = str(path)
     path_metadata = dict(path_metadata or {})
 
+    lc_path = str(path)
+    metadata_asas_id = path_metadata.get("asas_sn_id")
+    asas_sn_id = Path(path).stem if _is_missing_value(metadata_asas_id) else str(metadata_asas_id).strip()
+    metadata_candidate_id = path_metadata.get("candidate_id")
+    candidate_id = (
+        f"stv_{asas_sn_id}"
+        if _is_missing_value(metadata_candidate_id)
+        else str(metadata_candidate_id).strip()
+    )
+    if not candidate_id or candidate_id.lower() in {"nan", "none", "null", "<na>"}:
+        raise ValueError("Candidate metadata contains an invalid candidate_id")
+
     if os.path.isfile(path) and path.endswith('.csv'):
         df = read_skypatrol_csv(path)
     elif os.path.isfile(path):
@@ -2051,6 +2063,37 @@ def process_lightcurve(
             filter_catastrophic=True,
             scatter_ratio_threshold=bad_camera_scatter_ratio,
         )
+
+    if df.empty and pre_baseline_bad_cameras:
+        # Camera rejection is a completed selection decision. No baseline or
+        # event statistics can be measured, and both detection branches fail.
+        rejected = {
+            column: (False if column in EVENTS_BOOL_COLUMNS else
+                     0 if column in EVENTS_INT_COLUMNS else
+                     "" if column in EVENTS_STRING_COLUMNS else np.nan)
+            for column in EVENTS_CORE_COLUMNS
+        }
+        rejected.update(
+            candidate_id=candidate_id,
+            timescale="stv",
+            event_schema_version=EVENT_SCHEMA_VERSION,
+            event_score_version=EVENT_SCORE_VERSION,
+            asas_sn_id=asas_sn_id,
+            lc_path=lc_path,
+            raw_n_points=raw_n_points,
+            raw_n_cameras=raw_n_cameras,
+            raw_camera_ids=raw_camera_ids,
+            raw_asassn_fields=str(raw_field_summary.get("asassn_fields", "")),
+            raw_camera_names=str(raw_field_summary.get("camera_names", "")),
+            baseline_source="rejected_all_cameras",
+            baseline_cross_band_details="{}",
+            dipper_score_status="all_cameras_filtered",
+            jumper_score_status="all_cameras_filtered",
+            trigger_mode=str(trigger_mode),
+            bad_cameras_filtered=",".join(sorted(map(str, pre_baseline_bad_cameras))),
+            event_rejection_reason="all_cameras_filtered",
+        )
+        return rejected
 
     baseline_func_map = {
         "gp": per_camera_gp_baseline,
@@ -2257,18 +2300,6 @@ def process_lightcurve(
             jumper_score_status = "ok"
         else:
             jumper_score_status = "no_valid_events"
-
-    lc_path = str(path)
-    metadata_asas_id = path_metadata.get("asas_sn_id")
-    asas_sn_id = Path(path).stem if _is_missing_value(metadata_asas_id) else str(metadata_asas_id).strip()
-    metadata_candidate_id = path_metadata.get("candidate_id")
-    candidate_id = (
-        f"stv_{asas_sn_id}"
-        if _is_missing_value(metadata_candidate_id)
-        else str(metadata_candidate_id).strip()
-    )
-    if not candidate_id or candidate_id.lower() in {"nan", "none", "null", "<na>"}:
-        raise ValueError("Candidate metadata contains an invalid candidate_id")
 
     return dict(
         candidate_id=candidate_id,
